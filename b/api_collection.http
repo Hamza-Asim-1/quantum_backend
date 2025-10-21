@@ -1,0 +1,194 @@
+### AUTH
+# POST /register
+POST {{BASE_URL}}/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "user1@example.com",
+  "password": "StrongP@ssw0rd",
+  "full_name": "User One",
+  "phone": "+1234567890"
+}
+
+### POST /login
+POST {{BASE_URL}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "user1@example.com",
+  "password": "StrongP@ssw0rd"
+}
+
+### GET /profile
+GET {{BASE_URL}}/api/v1/auth/profile
+Authorization: Bearer {{USER_TOKEN}}
+
+---
+
+### KYC
+# POST /submit
+POST {{BASE_URL}}/api/v1/kyc/submit
+Authorization: Bearer {{USER_TOKEN}}
+Content-Type: multipart/form-data
+
+document_type=passport
+document_number=AB123456
+document_front=@./test-files/id-front.jpg
+document_back=@./test-files/id-back.jpg
+selfie=@./test-files/selfie.jpg
+
+### GET /status
+GET {{BASE_URL}}/api/v1/kyc/status
+Authorization: Bearer {{USER_TOKEN}}
+
+---
+
+### DEPOSITS
+# GET /history
+GET {{BASE_URL}}/api/v1/deposits/history?limit=10&offset=0
+Authorization: Bearer {{USER_TOKEN}}
+
+# GET /balance
+GET {{BASE_URL}}/api/v1/deposits/balance
+Authorization: Bearer {{USER_TOKEN}}
+
+# GET /ledger
+GET {{BASE_URL}}/api/v1/deposits/ledger?limit=10&offset=0
+Authorization: Bearer {{USER_TOKEN}}
+
+# POST /record (Admin)
+POST {{BASE_URL}}/api/v1/deposits/record
+Authorization: Bearer {{ADMIN_TOKEN}}
+Content-Type: application/json
+
+{
+  "user_id": 1,
+  "amount": 250.50,
+  "transaction_id": "DEP-TEST-001",
+  "payment_method": "bank_transfer",
+  "notes": "manual credit"
+}
+
+# GET /all (Admin)
+GET {{BASE_URL}}/api/v1/deposits/all?limit=20&offset=0&status=completed
+Authorization: Bearer {{ADMIN_TOKEN}}
+
+---
+
+### WITHDRAWALS
+# POST /request
+POST {{BASE_URL}}/api/v1/withdrawals/request
+Authorization: Bearer {{USER_TOKEN}}
+Content-Type: application/json
+
+{
+  "amount": 100,
+  "chain": "TRC20",
+  "wallet_address": "TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+}
+
+# GET /history
+GET {{BASE_URL}}/api/v1/withdrawals/history?limit=10&offset=0&status=pending
+Authorization: Bearer {{USER_TOKEN}}
+
+# PATCH /cancel
+PATCH {{BASE_URL}}/api/v1/withdrawals/123/cancel
+Authorization: Bearer {{USER_TOKEN}}
+
+# ADMIN
+GET {{BASE_URL}}/api/v1/withdrawals/admin/all?limit=50&offset=0&status=pending&chain=BEP20&user_id=1
+Authorization: Bearer {{ADMIN_TOKEN}}
+
+GET {{BASE_URL}}/api/v1/withdrawals/admin/pending
+Authorization: Bearer {{ADMIN_TOKEN}}
+
+GET {{BASE_URL}}/api/v1/withdrawals/admin/stats
+Authorization: Bearer {{ADMIN_TOKEN}}
+
+PATCH {{BASE_URL}}/api/v1/withdrawals/admin/123/approve
+Authorization: Bearer {{ADMIN_TOKEN}}
+Content-Type: application/json
+
+{
+  "tx_hash": "0xabc123...",
+  "admin_notes": "paid on-chain"
+}
+
+PATCH {{BASE_URL}}/api/v1/withdrawals/admin/123/reject
+Authorization: Bearer {{ADMIN_TOKEN}}
+Content-Type: application/json
+
+{
+  "reason": "suspected fraud"
+}
+
+---
+
+### WALLETS
+# POST /link
+POST {{BASE_URL}}/api/v1/wallets/link
+Authorization: Bearer {{USER_TOKEN}}
+Content-Type: application/json
+
+{
+  "chain": "BEP20",
+  "wallet_address": "0x0000000000000000000000000000000000000000"
+}
+
+# GET /my-wallets
+GET {{BASE_URL}}/api/v1/wallets/my-wallets
+Authorization: Bearer {{USER_TOKEN}}
+
+# GET /platform-addresses
+GET {{BASE_URL}}/api/v1/wallets/platform-addresses
+Authorization: Bearer {{USER_TOKEN}}
+
+# DELETE /wallet/:id
+DELETE {{BASE_URL}}/api/v1/wallets/5
+Authorization: Bearer {{USER_TOKEN}}
+
+---
+
+### ADMIN
+# POST /login
+POST {{BASE_URL}}/api/v1/admin/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "AdminP@ss1"
+}
+
+# GET /dashboard/stats
+GET {{BASE_URL}}/api/v1/admin/dashboard/stats
+Authorization: Bearer {{ADMIN_TOKEN}}
+
+# KYC
+GET {{BASE_URL}}/api/v1/admin/kyc/pending
+Authorization: Bearer {{ADMIN_TOKEN}}
+
+PATCH {{BASE_URL}}/api/v1/admin/kyc/42/approve
+Authorization: Bearer {{ADMIN_TOKEN}}
+
+PATCH {{BASE_URL}}/api/v1/admin/kyc/42/reject
+Authorization: Bearer {{ADMIN_TOKEN}}
+Content-Type: application/json
+
+{
+  "reason": "blurry document"
+}
+
+---
+
+### TRANSACTIONS
+# GET /transactions
+GET {{BASE_URL}}/api/v1/transactions?limit=20&offset=0&transaction_type=all&status=completed&search=user
+Authorization: Bearer {{ADMIN_TOKEN}}
+
+# GET /export
+GET {{BASE_URL}}/api/v1/transactions/export?format=csv&limit=100
+Authorization: Bearer {{ADMIN_TOKEN}}
+
+# GET /:id
+GET {{BASE_URL}}/api/v1/transactions/DEP-123?type=deposit
+Authorization: Bearer {{ADMIN_TOKEN}}
