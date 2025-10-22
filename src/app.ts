@@ -1,7 +1,22 @@
 // src/app.ts
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import * as compression from 'compression';
+import morgan from 'morgan';
+import logger, { morganStream } from './utils/logger';
+import { 
+  securityHeaders, 
+  generalRateLimit, 
+  requestId, 
+  requestLogger,
+  corsConfig 
+} from './middleware/security';
+import { 
+  globalErrorHandler, 
+  notFoundHandler, 
+  handleUnhandledRejection, 
+  handleUncaughtException 
+} from './middleware/errorHandler';
 import authRoutes from './routes/authRoutes';
 import adminRoutes from './routes/adminRoutes';
 import kycRoutes from './routes/kycRoutes';
@@ -11,56 +26,44 @@ import transactionHistoryRoutes from './routes/transactionHistoryRoutes';
 import investmentRoutes from './routes/investmentRoutes';
 import accountsRoutes from './routes/accountsRoutes';
 import walletRoutes from './routes/walletRoutes';
-dotenv.config();
+import healthRoutes from './routes/healthRoutes';
+
+// Handle uncaught exceptions and unhandled rejections
+handleUncaughtException();
+handleUnhandledRejection();
 
 const app = express();
-// backend/src/app.ts
-// Add this import at the top with other route imports:
 
+// Trust proxy (for rate limiting and IP detection)
+app.set('trust proxy', 1);
 
-// Add this route registration with other routes:
+// Security middleware
+app.use(securityHeaders);
 
-// Middleware
-app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',') || '*',
-  credentials: true,
-}));
-console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN);
+// Request ID middleware
+app.use(requestId);
 
-// Request logger
-app.use((req: Request, _res: Response, next: NextFunction) => {
-  console.log(`📨 ${req.method} ${req.path}`);
-  next();
-});
-const corsOptions = {
-  origin: [
-    'http://localhost:5173',  // Vite default
-    'http://localhost:8080',  // Your frontend port
-    'http://localhost:3000',  // Backend (for same-origin)
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:8080',
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  maxAge: 86400, // 24 hours
-};
-app.use(cors(corsOptions));
+// Request logging
+app.use(requestLogger);
 
+// Morgan HTTP logger
+app.use(morgan('combined', { stream: morganStream }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// CORS
+app.use(cors(corsConfig));
 
-// Health Check
-app.get('/health', (_req: Request, res: Response) => {
-  res.status(200).json({
-    status: 'success',
-    message: 'Server is running',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-  });
-});
+// Compression middleware
+app.use(compression.default());
+
+// Rate limiting
+app.use(generalRateLimit);
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Health Check Routes
+app.use('/health', healthRoutes);
 
 // API Version Route
 app.get('/api/v1', (_req: Request, res: Response) => {
@@ -68,48 +71,35 @@ app.get('/api/v1', (_req: Request, res: Response) => {
     status: 'success',
     message: 'Investment Platform API',
     version: 'v1',
+    timestamp: new Date().toISOString(),
   });
 });
-app.use('/investments', investmentRoutes);
 
 // API Routes
-console.log('🔧 Registering routes...');
+logger.info('🔧 Registering routes...');
 app.use('/api/v1/auth', authRoutes);
-console.log('   ✓ /api/v1/auth');
+logger.info('   ✓ /api/v1/auth');
 app.use('/api/v1/admin', adminRoutes);
-console.log('   ✓ /api/v1/admin');
+logger.info('   ✓ /api/v1/admin');
 app.use('/api/v1/kyc', kycRoutes);
-console.log('   ✓ /api/v1/kyc');
+logger.info('   ✓ /api/v1/kyc');
 app.use('/api/v1/deposits', depositRoutes);
-console.log('   ✓ /api/v1/deposits');
+logger.info('   ✓ /api/v1/deposits');
 app.use('/api/v1/withdrawals', withdrawalRoutes);
-console.log('   ✓ /api/v1/withdrawals');
-app.use('/api/v1/transactions', transactionHistoryRoutes); // ADD THIS LINE
-console.log('   ✓ /api/v1/transactions'); // ADD THIS LINE
+logger.info('   ✓ /api/v1/withdrawals');
+app.use('/api/v1/transactions', transactionHistoryRoutes);
+logger.info('   ✓ /api/v1/transactions');
 app.use('/api/v1/investments', investmentRoutes);
-console.log('   ✓ /api/v1/investments'); // ADD THIS LINE
+logger.info('   ✓ /api/v1/investments');
 app.use('/api/v1/accounts', accountsRoutes);
-
-console.log('   ✓ /api/v1/accounts');
+logger.info('   ✓ /api/v1/accounts');
 app.use('/api/v1/wallets', walletRoutes);
-
+logger.info('   ✓ /api/v1/wallets');
 
 // 404 Handler
-app.use((req: Request, res: Response) => {
-  res.status(404).json({
-    status: 'error',
-    message: 'Route not found',
-    path: req.path,
-  });
-});
+app.use(notFoundHandler);
 
-// Error Handler
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('❌ Error:', err.message);
-  res.status(500).json({
-    status: 'error',
-    message: 'Internal server error',
-  });
-});
+// Global Error Handler
+app.use(globalErrorHandler);
 
 export default app;

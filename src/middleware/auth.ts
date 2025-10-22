@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import config from '../config/environment';
+import logger from '../utils/logger';
 
 interface JwtPayload {
   id: number;
@@ -8,6 +10,8 @@ interface JwtPayload {
   role?: string;
   userId?: number;
   isAdmin?: boolean;
+  iat?: number;
+  exp?: number;
 }
 
 // Extend Express Request type
