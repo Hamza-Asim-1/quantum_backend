@@ -28,7 +28,7 @@ export const globalErrorHandler = (
   err: Error | AppError,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void => {
   let error = { ...err } as AppError;
   error.message = err.message;

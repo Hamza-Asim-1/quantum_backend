@@ -65,7 +65,6 @@ export class CronJobService {
         logger.error('❌ Daily profit distribution failed:', error);
       }
     }, {
-      scheduled: false,
       timezone: 'UTC'
     });
 

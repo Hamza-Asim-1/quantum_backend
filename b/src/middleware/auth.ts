@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import config from '../config/environment';
-import logger from '../utils/logger';
+// import config from '../config/environment';
+// import logger from '../utils/logger';
 
 interface JwtPayload {
   id: number;

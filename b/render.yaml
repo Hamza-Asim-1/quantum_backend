@@ -11,6 +11,29 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: investment-platform-db
+          property: connectionString
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: investment-platform-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: investment-platform-redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          type: redis
+          name: investment-platform-redis
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: https://your-frontend-app.onrender.com
     autoDeploy: true
     branch: main
     rootDir: .
@@ -32,3 +55,10 @@ services:
       name: postgres-data
       mountPath: /var/lib/postgresql/data
       sizeGB: 1
+
+  - type: redis
+    name: investment-platform-redis
+    plan: free
+    envVars:
+      - key: REDIS_PASSWORD
+        generateValue: true

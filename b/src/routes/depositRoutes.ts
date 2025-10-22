@@ -3,7 +3,7 @@ import {
   //recordDeposit,
   getDepositHistory,
   getBalance,
-  getDepositById,
+  // getDepositById,
   submitDeposit,
   //getAllDeposits,
   //getLedger,

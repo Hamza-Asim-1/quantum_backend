@@ -1,5 +1,5 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 // Configure R2 client
 const r2Client = new S3Client({
@@ -22,7 +22,7 @@ export const uploadToR2 = async (
   try {
     // Generate unique filename
     const fileExtension = file.originalname.split('.').pop();
-    const fileName = `${folder}/${uuidv4()}.${fileExtension}`;
+    const fileName = `${folder}/${randomUUID()}.${fileExtension}`;
 
     // Upload to R2
     const command = new PutObjectCommand({

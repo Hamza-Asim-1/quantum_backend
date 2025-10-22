@@ -55,6 +55,6 @@ export const getUserBalance = async (req: AuthenticatedRequest, res: Response): 
   }
 };
 
-export const getAccountDetails = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const getAccountDetails = async (_req: AuthenticatedRequest, _res: Response): Promise<void> => {
   // Implementation here if needed
 };
