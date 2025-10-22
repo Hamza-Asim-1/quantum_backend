@@ -1,23 +1,29 @@
 import { Pool } from 'pg';
 import fs from 'fs';
 import path from 'path';
-import dotenv from 'dotenv';
+import config from '../config/environment';
+import logger from '../utils/logger';
 
-dotenv.config();
-
+// Create a separate pool for migrations
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'investment_platform',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'password',
+  host: config.DB_HOST,
+  port: config.DB_PORT,
+  database: config.DB_NAME,
+  user: config.DB_USER,
+  password: config.DB_PASSWORD,
+  ssl: config.NODE_ENV === 'production' ? {
+    rejectUnauthorized: false
+  } : false,
+  max: 1, // Single connection for migrations
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
 });
 
 async function runMigrations() {
   const client = await pool.connect();
   
   try {
-    console.log('🔄 Starting database migrations...');
+    logger.info('🔄 Starting database migrations...');
     
     // Create migrations table if it doesn't exist
     await client.query(`
@@ -34,7 +40,7 @@ async function runMigrations() {
       .filter(file => file.endsWith('.sql'))
       .sort();
     
-    console.log(`📁 Found ${files.length} migration files`);
+    logger.info(`📁 Found ${files.length} migration files`);
     
     for (const file of files) {
       // Check if migration already ran
@@ -44,11 +50,11 @@ async function runMigrations() {
       );
       
       if (result.rows.length > 0) {
-        console.log(`⏭️  Skipping ${file} (already executed)`);
+        logger.info(`⏭️  Skipping ${file} (already executed)`);
         continue;
       }
       
-      console.log(`🔄 Running migration: ${file}`);
+      logger.info(`🔄 Running migration: ${file}`);
       
       // Read and execute migration file
       const migrationPath = path.join(migrationsDir, file);
@@ -64,18 +70,18 @@ async function runMigrations() {
         );
         await client.query('COMMIT');
         
-        console.log(`✅ Migration ${file} completed successfully`);
+        logger.info(`✅ Migration ${file} completed successfully`);
       } catch (error) {
         await client.query('ROLLBACK');
-        console.error(`❌ Migration ${file} failed:`, error);
+        logger.error(`❌ Migration ${file} failed:`, error);
         throw error;
       }
     }
     
-    console.log('🎉 All migrations completed successfully!');
+    logger.info('🎉 All migrations completed successfully!');
     
   } catch (error) {
-    console.error('❌ Migration error:', error);
+    logger.error('❌ Migration error:', error);
     throw error;
   } finally {
     client.release();
@@ -87,11 +93,11 @@ async function runMigrations() {
 if (require.main === module) {
   runMigrations()
     .then(() => {
-      console.log('✅ Migration process completed');
+      logger.info('✅ Migration process completed');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('❌ Migration process failed:', error);
+      logger.error('❌ Migration process failed:', error);
       process.exit(1);
     });
 }

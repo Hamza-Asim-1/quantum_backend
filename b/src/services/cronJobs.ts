@@ -1,9 +1,12 @@
 import cron from 'node-cron';
 import depositScannerService from './depositScannerService';
+import profitCalculationService from './profitCalculationService';
+import logger from '../utils/logger';
 
 export class CronJobService {
   // Mark as any to avoid namespace typing issues from @types/node-cron
   private depositScanJob: any = null;
+  private profitDistributionJob: any = null;
 
   // Start deposit scanner cron job
   startDepositScanner() {
@@ -44,18 +47,54 @@ export class CronJobService {
     }
   }
 
+  // Start daily profit distribution cron job
+  startProfitDistribution() {
+    // Run daily at 00:01 (1 minute after midnight)
+    this.profitDistributionJob = cron.schedule('1 0 * * *', async () => {
+      try {
+        logger.info('🔄 Starting daily profit distribution...');
+        const result = await profitCalculationService.distributeDailyProfits();
+        logger.info('✅ Daily profit distribution completed', {
+          runId: result.runId,
+          totalInvestments: result.totalInvestments,
+          usersCredited: result.usersCredited,
+          totalProfitDistributed: result.totalProfitDistributed,
+          errors: result.errors.length
+        });
+      } catch (error) {
+        logger.error('❌ Daily profit distribution failed:', error);
+      }
+    }, {
+      scheduled: false,
+      timezone: 'UTC'
+    });
+
+    this.profitDistributionJob.start();
+    logger.info('✅ Daily profit distribution scheduled (runs at 00:01 UTC)');
+  }
+
+  // Stop profit distribution
+  stopProfitDistribution() {
+    if (this.profitDistributionJob) {
+      this.profitDistributionJob.stop();
+      logger.info('⏹️  Daily profit distribution stopped');
+    }
+  }
+
   // Start all cron jobs
   startAll() {
-    console.log('\n⏰ Initializing cron jobs...');
+    logger.info('\n⏰ Initializing cron jobs...');
     this.startDepositScanner();
-    console.log('✅ All cron jobs started\n');
+    this.startProfitDistribution();
+    logger.info('✅ All cron jobs started\n');
   }
 
   // Stop all cron jobs
   stopAll() {
-    console.log('\n⏹️  Stopping all cron jobs...');
+    logger.info('\n⏹️  Stopping all cron jobs...');
     this.stopDepositScanner();
-    console.log('✅ All cron jobs stopped\n');
+    this.stopProfitDistribution();
+    logger.info('✅ All cron jobs stopped\n');
   }
 }
 
