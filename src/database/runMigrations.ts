@@ -5,19 +5,35 @@ import config from '../config/environment';
 import logger from '../utils/logger';
 
 // Create a separate pool for migrations
-const pool = new Pool({
-  host: config.DB_HOST,
-  port: config.DB_PORT,
-  database: config.DB_NAME,
-  user: config.DB_USER,
-  password: config.DB_PASSWORD,
-  ssl: config.NODE_ENV === 'production' ? {
-    rejectUnauthorized: false
-  } : false,
-  max: 1, // Single connection for migrations
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+let pool: Pool;
+
+if (config.DATABASE_URL) {
+  pool = new Pool({
+    connectionString: config.DATABASE_URL,
+    ssl: config.NODE_ENV === 'production' ? {
+      rejectUnauthorized: false
+    } : false,
+    max: 1, // Single connection for migrations
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  });
+  logger.info('Using DATABASE_URL for migrations');
+} else {
+  pool = new Pool({
+    host: config.DB_HOST,
+    port: config.DB_PORT,
+    database: config.DB_NAME,
+    user: config.DB_USER,
+    password: config.DB_PASSWORD,
+    ssl: config.NODE_ENV === 'production' ? {
+      rejectUnauthorized: false
+    } : false,
+    max: 1, // Single connection for migrations
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  });
+  logger.info('Using individual database config for migrations');
+}
 
 async function runMigrations() {
   const client = await pool.connect();
