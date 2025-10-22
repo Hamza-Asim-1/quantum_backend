@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import config from '../config/environment';
 import logger from '../utils/logger';
-import { AppError } from './errorHandler';
+// import { AppError } from './errorHandler';
 
 interface JwtPayload {
   id: number;
@@ -325,7 +325,7 @@ export const requireRole = (allowedRoles: string[]) => {
 // Optional authentication middleware (doesn't fail if no token)
 export const optionalAuth = (
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): void => {
   try {

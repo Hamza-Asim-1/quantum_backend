@@ -175,7 +175,7 @@ export default cacheService;
 
 // Cache decorator for functions
 export function cached(ttl: number = 3600, prefix?: string) {
-  return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
+  return function (_target: any, propertyName: string, descriptor: PropertyDescriptor) {
     const method = descriptor.value;
     
     descriptor.value = async function (...args: any[]) {

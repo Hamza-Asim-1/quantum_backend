@@ -28,7 +28,7 @@ interface ServiceStatus {
 }
 
 // Basic health check
-export const healthCheck = async (req: Request, res: Response): Promise<void> => {
+export const healthCheck = async (_req: Request, res: Response): Promise<void> => {
   try {
     const startTime = Date.now();
     
@@ -89,7 +89,7 @@ export const healthCheck = async (req: Request, res: Response): Promise<void> =>
 };
 
 // Detailed health check (for monitoring systems)
-export const detailedHealthCheck = async (req: Request, res: Response): Promise<void> => {
+export const detailedHealthCheck = async (_req: Request, res: Response): Promise<void> => {
   try {
     const startTime = Date.now();
     
@@ -169,7 +169,7 @@ export const detailedHealthCheck = async (req: Request, res: Response): Promise<
 };
 
 // Readiness check (for Kubernetes/Render)
-export const readinessCheck = async (req: Request, res: Response): Promise<void> => {
+export const readinessCheck = async (_req: Request, res: Response): Promise<void> => {
   try {
     const dbConnected = await testConnection();
     const redisConnected = await testRedisConnection();
@@ -197,7 +197,7 @@ export const readinessCheck = async (req: Request, res: Response): Promise<void>
 };
 
 // Liveness check (for Kubernetes/Render)
-export const livenessCheck = (req: Request, res: Response): void => {
+export const livenessCheck = (_req: Request, res: Response): void => {
   res.status(200).json({
     status: 'alive',
     timestamp: new Date().toISOString(),

@@ -159,7 +159,7 @@ export const commonSchemas = {
 };
 
 // Sanitize input middleware
-export const sanitizeInput = (req: Request, res: Response, next: NextFunction): void => {
+export const sanitizeInput = (req: Request, _res: Response, next: NextFunction): void => {
   try {
     // Sanitize string inputs
     const sanitizeString = (str: string): string => {
@@ -209,8 +209,8 @@ export const sanitizeInput = (req: Request, res: Response, next: NextFunction): 
 };
 
 // Rate limiting for specific endpoints
-export const createEndpointRateLimit = (windowMs: number, max: number, message?: string) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+export const createEndpointRateLimit = (_windowMs: number, _max: number, _message?: string) => {
+  return (_req: Request, _res: Response, next: NextFunction): void => {
     // This would integrate with your rate limiting solution
     // For now, just pass through
     next();
