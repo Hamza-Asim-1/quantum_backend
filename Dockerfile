@@ -10,7 +10,12 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install all dependencies (including devDependencies for build)
-RUN npm ci --include=dev
+# Use npm install if package-lock.json is not available, otherwise use npm ci
+RUN if [ -f package-lock.json ]; then \
+        npm ci --include=dev; \
+    else \
+        npm install; \
+    fi
 
 # Copy source code
 COPY . .
@@ -35,7 +40,12 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm ci --only=production && \
+# Use npm install if package-lock.json is not available, otherwise use npm ci
+RUN if [ -f package-lock.json ]; then \
+        npm ci --omit=dev; \
+    else \
+        npm install --omit=dev; \
+    fi && \
     npm cache clean --force && \
     rm -rf /tmp/*
 
