@@ -3,10 +3,26 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Extract Redis URL from command line or use direct URL
+const getRedisUrl = (): string | null => {
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) return null;
+  
+  // If it's a command line, extract the URL part
+  if (redisUrl.includes('redis-cli')) {
+    const urlMatch = redisUrl.match(/redis:\/\/[^\s]+/);
+    return urlMatch ? urlMatch[0] : null;
+  }
+  
+  // If it's already a URL, use it directly
+  return redisUrl;
+};
+
 // Create Redis client with URL or individual config
-const redisClient: RedisClientType = process.env.REDIS_URL 
+const redisUrl = getRedisUrl();
+const redisClient: RedisClientType = redisUrl
   ? createClient({
-      url: process.env.REDIS_URL,
+      url: redisUrl,
       legacyMode: false,
     })
   : createClient({
