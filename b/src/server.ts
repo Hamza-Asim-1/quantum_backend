@@ -3,6 +3,7 @@ import config from './config/environment';
 import { testConnection, closePool } from './config/database';
 import { connectRedis, testRedisConnection, closeRedis } from './config/redis';
 import cronJobService from './services/cronJobs';
+import runMigrations from './database/runMigrations';
 import logger from './utils/logger';
 
 // Start Server
@@ -14,6 +15,11 @@ const startServer = async () => {
     if (!dbConnected) {
       throw new Error('Failed to connect to database');
     }
+
+    // Run Database Migrations
+    logger.info('🔄 Running database migrations...');
+    await runMigrations();
+    logger.info('✅ Database migrations completed');
 
     // Connect to Redis
     logger.info('🔍 Connecting to Redis...');

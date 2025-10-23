@@ -3,7 +3,7 @@ services:
     name: investment-platform-backend
     env: node
     plan: free
-    buildCommand: npm install && npm run build
+        buildCommand: npm install && npm run build && npm run migrate
     startCommand: npm start
     healthCheckPath: /health
     envVars:
@@ -15,21 +15,11 @@ services:
         fromDatabase:
           name: investment-platform-db
           property: connectionString
-      - key: REDIS_HOST
+      - key: REDIS_URL
         fromService:
           type: redis
           name: investment-platform-redis
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          type: redis
-          name: investment-platform-redis
-          property: port
-      - key: REDIS_PASSWORD
-        fromService:
-          type: redis
-          name: investment-platform-redis
-          property: password
+          property: connectionString
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGIN
