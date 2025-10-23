@@ -138,6 +138,11 @@ export const corsConfig = {
       return callback(null, true);
     }
     
+    // Allow quantumpips.co domain specifically
+    if (origin === 'https://quantumpips.co' || origin === 'https://www.quantumpips.co') {
+      return callback(null, true);
+    }
+    
     // Allow GoDaddy domains (common patterns)
     if (origin.includes('.com') || origin.includes('.net') || origin.includes('.org')) {
       return callback(null, true);
