@@ -25,7 +25,7 @@ const router = Router();
 router.post('/login', adminLogin);
 
 // Temporary endpoint to fix admin password (remove after use)
-router.post('/fix-admin-password', async (req, res) => {
+router.post('/fix-admin-password', async (_req, res): Promise<void> => {
   try {
     const bcrypt = require('bcrypt');
     const pool = require('../config/database').default;
@@ -48,10 +48,11 @@ router.post('/fix-admin-password', async (req, res) => {
     );
     
     if (result.rowCount === 0) {
-      return res.status(404).json({
+      res.status(404).json({
         status: 'error',
         message: 'Admin user not found'
       });
+      return;
     }
     
     res.json({
@@ -68,7 +69,7 @@ router.post('/fix-admin-password', async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'Failed to fix admin password',
-      error: error.message
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
