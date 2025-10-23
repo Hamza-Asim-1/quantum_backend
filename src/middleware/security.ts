@@ -138,22 +138,12 @@ export const corsConfig = {
       return callback(null, true);
     }
     
-    // Allow Vercel domains
-    if (origin.includes('vercel.app') || origin.includes('vercel.com')) {
+    // Allow GoDaddy domains (common patterns)
+    if (origin.includes('.com') || origin.includes('.net') || origin.includes('.org')) {
       return callback(null, true);
     }
     
-    // Allow Netlify domains
-    if (origin.includes('netlify.app') || origin.includes('netlify.com')) {
-      return callback(null, true);
-    }
-    
-    // Allow Render domains
-    if (origin.includes('onrender.com')) {
-      return callback(null, true);
-    }
-    
-    // Check configured origins
+    // Allow configured origins
     if (config.CORS_ORIGIN.includes(origin)) {
       callback(null, true);
     } else {
