@@ -133,6 +133,27 @@ export const corsConfig = {
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     
+    // Allow localhost for development
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    
+    // Allow Vercel domains
+    if (origin.includes('vercel.app') || origin.includes('vercel.com')) {
+      return callback(null, true);
+    }
+    
+    // Allow Netlify domains
+    if (origin.includes('netlify.app') || origin.includes('netlify.com')) {
+      return callback(null, true);
+    }
+    
+    // Allow Render domains
+    if (origin.includes('onrender.com')) {
+      return callback(null, true);
+    }
+    
+    // Check configured origins
     if (config.CORS_ORIGIN.includes(origin)) {
       callback(null, true);
     } else {
