@@ -9,31 +9,24 @@ CREATE TABLE IF NOT EXISTS admin_actions (
     
     -- Action details
     action_type VARCHAR(50) NOT NULL CHECK (action_type IN (
-        'kyc_approve', 'kyc_reject', 
-        'deposit_confirm', 'deposit_reject',
-        'withdrawal_approve', 'withdrawal_reject',
-        'user_suspend', 'user_activate',
-        'system_pause', 'system_resume',
-        'profit_run_manual', 'balance_adjustment',
-        'user_delete', 'other'
+        'user_created', 'user_updated', 'user_deleted',
+        'deposit_approved', 'deposit_rejected', 'deposit_processed',
+        'withdrawal_approved', 'withdrawal_rejected', 'withdrawal_processed',
+        'investment_created', 'investment_updated', 'investment_cancelled',
+        'kyc_approved', 'kyc_rejected', 'kyc_updated',
+        'profit_distributed', 'referral_commission_paid',
+        'system_config_updated', 'admin_created', 'admin_updated'
     )),
     
-    -- Target information
-    target_type VARCHAR(50), -- 'user', 'deposit', 'withdrawal', 'kyc', 'system'
+    -- Target of the action
+    target_type VARCHAR(50), -- 'user', 'deposit', 'withdrawal', 'investment', 'kyc', 'system'
     target_id INTEGER,
     
     -- Action details
     description TEXT NOT NULL,
-    reason TEXT,
+    changes JSONB, -- Before/after values for updates
     
-    -- Changes made (before/after data)
-    changes JSONB,
-    
-    -- Request metadata
-    ip_address INET,
-    user_agent TEXT,
-    
-    -- Timestamps
+    -- Timestamps (immutable - no updates allowed)
     performed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
@@ -67,10 +60,7 @@ CREATE OR REPLACE FUNCTION log_admin_action(
     p_target_type VARCHAR,
     p_target_id INTEGER,
     p_description TEXT,
-    p_reason TEXT DEFAULT NULL,
-    p_changes JSONB DEFAULT NULL,
-    p_ip_address INET DEFAULT NULL,
-    p_user_agent TEXT DEFAULT NULL
+    p_changes JSONB DEFAULT NULL
 )
 RETURNS INTEGER AS $$
 DECLARE
@@ -78,10 +68,10 @@ DECLARE
 BEGIN
     INSERT INTO admin_actions (
         admin_id, action_type, target_type, target_id,
-        description, reason, changes, ip_address, user_agent
+        description, changes
     ) VALUES (
         p_admin_id, p_action_type, p_target_type, p_target_id,
-        p_description, p_reason, p_changes, p_ip_address, p_user_agent
+        p_description, p_changes
     ) RETURNING id INTO v_action_id;
     
     RETURN v_action_id;
@@ -92,27 +82,28 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE VIEW recent_admin_activity AS
 SELECT 
     aa.id,
-    aa.action_type,
+    aa.admin_id,
     u.email as admin_email,
     u.full_name as admin_name,
+    aa.action_type,
     aa.target_type,
     aa.target_id,
     aa.description,
-    aa.reason,
+    aa.changes,
     aa.performed_at
 FROM admin_actions aa
 JOIN users u ON aa.admin_id = u.id
 ORDER BY aa.performed_at DESC
 LIMIT 100;
 
--- View for admin statistics
+-- View for admin action statistics
 CREATE OR REPLACE VIEW admin_action_statistics AS
 SELECT 
-    u.id as admin_id,
-    u.email as admin_email,
-    u.full_name as admin_name,
-    COUNT(*) as total_actions,
-    COUNT(CASE WHEN aa.action_type LIKE 'kyc_%' THEN 1 END) as kyc_actions,
+    u.id,
+    u.email,
+    u.full_name,
+    COUNT(aa.id) as total_actions,
+    COUNT(CASE WHEN aa.action_type LIKE 'user_%' THEN 1 END) as user_actions,
     COUNT(CASE WHEN aa.action_type LIKE 'deposit_%' THEN 1 END) as deposit_actions,
     COUNT(CASE WHEN aa.action_type LIKE 'withdrawal_%' THEN 1 END) as withdrawal_actions,
     MAX(aa.performed_at) as last_action_at
