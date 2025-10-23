@@ -30,9 +30,9 @@ CREATE TABLE accounts (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_accounts_user_id ON accounts(user_id);
-CREATE INDEX idx_accounts_balance ON accounts(balance);
-CREATE INDEX idx_accounts_available_balance ON accounts(available_balance);
+CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_balance ON accounts(balance);
+CREATE INDEX IF NOT EXISTS idx_accounts_available_balance ON accounts(available_balance);
 
 -- Helper function to get user balance
 CREATE OR REPLACE FUNCTION get_user_balance(p_user_id INTEGER, p_balance_type VARCHAR DEFAULT 'total')

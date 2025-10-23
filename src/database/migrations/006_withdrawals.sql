@@ -30,12 +30,13 @@ CREATE TABLE IF NOT EXISTS withdrawals (
 );
 
 -- Indexes
-CREATE INDEX idx_withdrawals_user_id ON withdrawals(user_id);
-CREATE INDEX idx_withdrawals_status ON withdrawals(status);
-CREATE INDEX idx_withdrawals_chain ON withdrawals(chain);
-CREATE INDEX idx_withdrawals_requested_at ON withdrawals(requested_at);
+CREATE INDEX IF NOT EXISTS idx_withdrawals_user_id ON withdrawals(user_id);
+CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);
+CREATE INDEX IF NOT EXISTS idx_withdrawals_chain ON withdrawals(chain);
+CREATE INDEX IF NOT EXISTS idx_withdrawals_requested_at ON withdrawals(requested_at);
 
 -- Trigger to update updated_at
+DROP TRIGGER IF EXISTS update_withdrawals_updated_at ON withdrawals;
 CREATE TRIGGER update_withdrawals_updated_at
     BEFORE UPDATE ON withdrawals
     FOR EACH ROW
@@ -59,6 +60,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS deduct_balance_on_withdrawal ON withdrawals;
 CREATE TRIGGER deduct_balance_on_withdrawal
     AFTER INSERT ON withdrawals
     FOR EACH ROW
@@ -84,6 +86,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS refund_balance_on_withdrawal_rejection ON withdrawals;
 CREATE TRIGGER refund_balance_on_withdrawal_rejection
     AFTER UPDATE ON withdrawals
     FOR EACH ROW

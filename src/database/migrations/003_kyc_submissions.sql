@@ -28,12 +28,13 @@ CREATE TABLE IF NOT EXISTS kyc_submissions (
 );
 
 -- Indexes
-CREATE INDEX idx_kyc_user_id ON kyc_submissions(user_id);
-CREATE INDEX idx_kyc_status ON kyc_submissions(status);
-CREATE INDEX idx_kyc_reviewed_by ON kyc_submissions(reviewed_by);
-CREATE INDEX idx_kyc_submitted_at ON kyc_submissions(submitted_at);
+CREATE INDEX IF NOT EXISTS idx_kyc_user_id ON kyc_submissions(user_id);
+CREATE INDEX IF NOT EXISTS idx_kyc_status ON kyc_submissions(status);
+CREATE INDEX IF NOT EXISTS idx_kyc_reviewed_by ON kyc_submissions(reviewed_by);
+CREATE INDEX IF NOT EXISTS idx_kyc_submitted_at ON kyc_submissions(submitted_at);
 
 -- Trigger to update updated_at
+DROP TRIGGER IF EXISTS update_kyc_updated_at ON kyc_submissions;
 CREATE TRIGGER update_kyc_updated_at
     BEFORE UPDATE ON kyc_submissions
     FOR EACH ROW
@@ -53,6 +54,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS sync_kyc_to_user ON kyc_submissions;
 CREATE TRIGGER sync_kyc_to_user
     AFTER UPDATE ON kyc_submissions
     FOR EACH ROW

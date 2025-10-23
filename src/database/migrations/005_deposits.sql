@@ -30,13 +30,14 @@ CREATE TABLE IF NOT EXISTS deposits (
 );
 
 -- Indexes
-CREATE INDEX idx_deposits_user_id ON deposits(user_id);
-CREATE INDEX idx_deposits_status ON deposits(status);
-CREATE INDEX idx_deposits_chain ON deposits(chain);
-CREATE INDEX idx_deposits_tx_hash ON deposits(tx_hash);
-CREATE INDEX idx_deposits_created_at ON deposits(created_at);
+CREATE INDEX IF NOT EXISTS idx_deposits_user_id ON deposits(user_id);
+CREATE INDEX IF NOT EXISTS idx_deposits_status ON deposits(status);
+CREATE INDEX IF NOT EXISTS idx_deposits_chain ON deposits(chain);
+CREATE INDEX IF NOT EXISTS idx_deposits_tx_hash ON deposits(tx_hash);
+CREATE INDEX IF NOT EXISTS idx_deposits_created_at ON deposits(created_at);
 
 -- Trigger to update updated_at
+DROP TRIGGER IF EXISTS update_deposits_updated_at ON deposits;
 CREATE TRIGGER update_deposits_updated_at
     BEFORE UPDATE ON deposits
     FOR EACH ROW
@@ -59,6 +60,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_balance_on_deposit_confirm ON deposits;
 CREATE TRIGGER update_balance_on_deposit_confirm
     AFTER UPDATE ON deposits
     FOR EACH ROW
