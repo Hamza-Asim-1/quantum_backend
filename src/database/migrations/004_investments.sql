@@ -56,17 +56,17 @@ CREATE INDEX IF NOT EXISTS idx_investments_status ON investments(status);
 -- );
 
 -- Indexes for performance
-CREATE INDEX idx_investments_user_id ON investments(user_id);
-CREATE INDEX idx_investments_status ON investments(status);
-CREATE INDEX idx_investments_next_profit_date ON investments(next_profit_date);
-CREATE INDEX idx_investments_level ON investments(level);
-CREATE INDEX idx_investments_frequency ON investments(frequency);
+CREATE INDEX IF NOT EXISTS idx_investments_user_id ON investments(user_id);
+CREATE INDEX IF NOT EXISTS idx_investments_next_profit_date ON investments(next_profit_date);
+CREATE INDEX IF NOT EXISTS idx_investments_level ON investments(level);
+CREATE INDEX IF NOT EXISTS idx_investments_frequency ON investments(frequency);
 
 -- Composite index for profit distribution queries
-CREATE INDEX idx_investments_profit_due ON investments(status, next_profit_date, frequency) 
+CREATE INDEX IF NOT EXISTS idx_investments_profit_due ON investments(status, next_profit_date, frequency) 
     WHERE status = 'active';
 
 -- Trigger to update updated_at
+DROP TRIGGER IF EXISTS update_investments_updated_at ON investments;
 CREATE TRIGGER update_investments_updated_at
     BEFORE UPDATE ON investments
     FOR EACH ROW
