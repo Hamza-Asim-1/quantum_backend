@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS referral_commissions (
     
     -- Payment status
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'cancelled')),
+    paid_at TIMESTAMP WITH TIME ZONE,
     
     -- Timestamps
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -89,6 +90,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to mark commission as paid
+CREATE OR REPLACE FUNCTION mark_commission_paid(p_commission_id INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE referral_commissions
+    SET 
+        status = 'paid',
+        paid_at = CURRENT_TIMESTAMP
+    WHERE id = p_commission_id AND status = 'pending';
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Commission % not found or already processed', p_commission_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
 COMMENT ON TABLE referral_commissions IS 'Referral commission payments (5% of first investment)';
 COMMENT ON COLUMN referral_commissions.commission_rate IS 'Commission percentage (default 5%)';
 COMMENT ON COLUMN referral_commissions.status IS 'Payment status: pending, paid, cancelled';
+COMMENT ON COLUMN referral_commissions.paid_at IS 'Timestamp when commission was paid';
