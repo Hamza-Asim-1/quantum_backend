@@ -52,6 +52,9 @@ RUN if [ -f package-lock.json ]; then \
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
 
+# Copy migration files (they are not compiled, just copied)
+COPY --from=builder /app/src/database/migrations ./dist/database/migrations
+
 # Create logs directory
 RUN mkdir -p logs && chown -R nodejs:nodejs /app
 
