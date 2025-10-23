@@ -1,4 +1,4 @@
-﻿-- Migration: Create user_wallets table
+-- Migration: Create user_wallets table
 -- Created: 2025-10-10
 -- Purpose: Store user crypto wallet addresses for BEP20 and TRC20
 

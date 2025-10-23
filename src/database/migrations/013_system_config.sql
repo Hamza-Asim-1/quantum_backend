@@ -1,4 +1,4 @@
-﻿-- Migration: Create system_config table
+-- Migration: Create system_config table
 -- Created: 2025-10-10
 -- Purpose: Store system configuration and scanner state
 
