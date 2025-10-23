@@ -32,14 +32,14 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
 );
 
 -- Indexes for querying
-CREATE INDEX idx_ledger_user_id ON ledger_entries(user_id);
-CREATE INDEX idx_ledger_transaction_type ON ledger_entries(transaction_type);
-CREATE INDEX idx_ledger_created_at ON ledger_entries(created_at DESC);
-CREATE INDEX idx_ledger_reference ON ledger_entries(reference_type, reference_id);
-CREATE INDEX idx_ledger_chain ON ledger_entries(chain);
+CREATE INDEX IF NOT EXISTS idx_ledger_user_id ON ledger_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_ledger_transaction_type ON ledger_entries(transaction_type);
+CREATE INDEX IF NOT EXISTS idx_ledger_created_at ON ledger_entries(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ledger_reference ON ledger_entries(reference_type, reference_id);
+CREATE INDEX IF NOT EXISTS idx_ledger_chain ON ledger_entries(chain);
 
 -- Composite index for user transaction history
-CREATE INDEX idx_ledger_user_history ON ledger_entries(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ledger_user_history ON ledger_entries(user_id, created_at DESC);
 
 -- Prevent updates and deletes (immutable ledger)
 CREATE OR REPLACE FUNCTION prevent_ledger_modification()
@@ -50,11 +50,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS prevent_ledger_update ON ledger_entries;
 CREATE TRIGGER prevent_ledger_update
     BEFORE UPDATE ON ledger_entries
     FOR EACH ROW
     EXECUTE FUNCTION prevent_ledger_modification();
 
+DROP TRIGGER IF EXISTS prevent_ledger_delete ON ledger_entries;
 CREATE TRIGGER prevent_ledger_delete
     BEFORE DELETE ON ledger_entries
     FOR EACH ROW
