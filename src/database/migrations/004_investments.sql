@@ -37,7 +37,6 @@ ALTER TABLE accounts ALTER COLUMN available_balance TYPE DECIMAL(15,2);
 -- Add indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_investments_user_status ON investments(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_investments_status ON investments(status);
-CREATE INDEX IF NOT EXISTS idx_ledger_entries_type ON ledger_entries(transaction_type);
 
 -- Ensure the investments table has all required columns (should already exist from migration 004)
 -- But let's verify the structure matches our controller:
