@@ -273,6 +273,8 @@ export const deleteInvestment = async (req: AuthenticatedRequest, res: Response)
     }
 
     const investment = investmentResult.rows[0];
+    // CHANGE 1: Ensure amount is a number
+    const investmentAmount = parseFloat(investment.amount);
 
     if (investment.status !== 'active') {
       await client.query('ROLLBACK');
@@ -283,15 +285,15 @@ export const deleteInvestment = async (req: AuthenticatedRequest, res: Response)
       return;
     }
 
-    // FIXED: Remove end_date since it might not exist
+    // Update investment status to cancelled
     await client.query(
       'UPDATE investments SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       ['cancelled', id]
     );
 
-    // Get user account
+    // CHANGE 2: Get account balance BEFORE updating it
     const accountResult = await client.query(
-      'SELECT id FROM accounts WHERE user_id = $1',
+      'SELECT id, available_balance, invested_balance FROM accounts WHERE user_id = $1',
       [userId]
     );
 
@@ -304,9 +306,12 @@ export const deleteInvestment = async (req: AuthenticatedRequest, res: Response)
       return;
     }
 
-    const accountId = accountResult.rows[0].id;
+    const account = accountResult.rows[0];
+    const accountId = account.id;
+    // CHANGE 3: Parse balance as float BEFORE the update
+    const balanceBefore = parseFloat(account.available_balance);
 
-    // Return investment amount to available balance
+    // NOW update the account balances (using investmentAmount which is already a number)
     await client.query(
       `UPDATE accounts 
        SET available_balance = available_balance + $1,
@@ -314,32 +319,30 @@ export const deleteInvestment = async (req: AuthenticatedRequest, res: Response)
            balance = (available_balance + $1) + GREATEST(invested_balance - $1, 0),
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $2`,
-      [investment.amount, accountId]
+      [investmentAmount, accountId]  // Using the parsed float value
     );
-    const currentBalanceResult = await client.query(
-  'SELECT available_balance FROM accounts WHERE user_id = $1',
-  [userId]
-);
 
+    // CHANGE 4: Calculate balance_after as a number, not string concatenation
+    const balanceAfter = balanceBefore + investmentAmount;
 
-    // Create ledger entry for investment cancellation
-await client.query(
-  `INSERT INTO ledger_entries (
-    user_id, transaction_type, amount, balance_before, balance_after,
-    reference_type, reference_id, description, created_at
-  )
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)`,
-  [
-    userId,
-    'refund',
-    investment.amount,
-    parseFloat(currentBalanceResult.rows[0].available_balance), // balance_before
-    parseFloat(currentBalanceResult.rows[0].available_balance) + investment.amount, // balance_after
-    'investment',
-    id,
-    `Investment cancelled - Amount refunded: ${investment.amount} USDT`
-  ]
-);
+    // Create ledger entry with correct numeric values
+    await client.query(
+      `INSERT INTO ledger_entries (
+        user_id, transaction_type, amount, balance_before, balance_after,
+        reference_type, reference_id, description, created_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)`,
+      [
+        userId,
+        'refund',
+        investmentAmount,  // Using parsed float
+        balanceBefore,     // Already a number
+        balanceAfter,      // Properly calculated as a number
+        'investment',
+        id,
+        `Investment cancelled - Amount refunded: ${investmentAmount} USDT`
+      ]
+    );
 
     await client.query('COMMIT');
 
@@ -347,7 +350,7 @@ await client.query(
       status: 'success',
       message: 'Investment deleted successfully. Amount has been refunded to your available balance.',
       data: {
-        refunded_amount: investment.amount,
+        refunded_amount: investmentAmount,  // Return the numeric value
       },
     });
 
