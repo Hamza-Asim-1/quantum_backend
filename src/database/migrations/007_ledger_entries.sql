@@ -1,4 +1,4 @@
-﻿-- Migration 007: Ledger Entries Table
+-- Migration 007: Ledger Entries Table
 -- Purpose: Immutable financial transaction log (audit trail)
 
 CREATE TABLE IF NOT EXISTS ledger_entries (
