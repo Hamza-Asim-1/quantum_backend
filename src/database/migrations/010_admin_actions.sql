@@ -38,21 +38,23 @@ CREATE TABLE IF NOT EXISTS admin_actions (
 );
 
 -- Indexes for querying and auditing
-CREATE INDEX idx_admin_actions_admin_id ON admin_actions(admin_id);
-CREATE INDEX idx_admin_actions_action_type ON admin_actions(action_type);
-CREATE INDEX idx_admin_actions_target ON admin_actions(target_type, target_id);
-CREATE INDEX idx_admin_actions_performed_at ON admin_actions(performed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_actions_admin_id ON admin_actions(admin_id);
+CREATE INDEX IF NOT EXISTS idx_admin_actions_action_type ON admin_actions(action_type);
+CREATE INDEX IF NOT EXISTS idx_admin_actions_target ON admin_actions(target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_admin_actions_performed_at ON admin_actions(performed_at DESC);
 
 -- Composite index for admin activity tracking
-CREATE INDEX idx_admin_actions_admin_history 
+CREATE INDEX IF NOT EXISTS idx_admin_actions_admin_history 
     ON admin_actions(admin_id, performed_at DESC);
 
 -- Prevent updates and deletes (immutable audit log)
+DROP TRIGGER IF EXISTS prevent_admin_actions_update ON admin_actions;
 CREATE TRIGGER prevent_admin_actions_update
     BEFORE UPDATE ON admin_actions
     FOR EACH ROW
     EXECUTE FUNCTION prevent_ledger_modification();
 
+DROP TRIGGER IF EXISTS prevent_admin_actions_delete ON admin_actions;
 CREATE TRIGGER prevent_admin_actions_delete
     BEFORE DELETE ON admin_actions
     FOR EACH ROW

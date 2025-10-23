@@ -32,11 +32,11 @@ CREATE TABLE IF NOT EXISTS profit_runs (
 );
 
 -- Indexes
-CREATE INDEX idx_profit_runs_run_type ON profit_runs(run_type);
-CREATE INDEX idx_profit_runs_run_date ON profit_runs(run_date DESC);
-CREATE INDEX idx_profit_runs_status ON profit_runs(status);
-CREATE INDEX idx_profit_runs_idempotency ON profit_runs(idempotency_key);
-CREATE INDEX idx_profit_runs_started_at ON profit_runs(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_profit_runs_run_type ON profit_runs(run_type);
+CREATE INDEX IF NOT EXISTS idx_profit_runs_run_date ON profit_runs(run_date DESC);
+CREATE INDEX IF NOT EXISTS idx_profit_runs_status ON profit_runs(status);
+CREATE INDEX IF NOT EXISTS idx_profit_runs_idempotency ON profit_runs(idempotency_key);
+CREATE INDEX IF NOT EXISTS idx_profit_runs_started_at ON profit_runs(started_at DESC);
 
 -- Unique constraint to prevent duplicate runs for same date and type
 CREATE UNIQUE INDEX idx_profit_runs_unique_daily 
@@ -110,4 +110,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 COMMENT ON TABLE profit_runs IS 'Automated profit distribution execution records';
-COMMENT ON COLUMN profit_runs.run_type
+COMMENT ON COLUMN profit_runs.run_type IS 'Type of profit run: daily or monthly';
+COMMENT ON COLUMN profit_runs.run_date IS 'Date for which profit distribution was executed';
+COMMENT ON COLUMN profit_runs.status IS 'Execution status: running, completed, failed, partial';
+COMMENT ON COLUMN profit_runs.idempotency_key IS 'Unique key to prevent duplicate runs';

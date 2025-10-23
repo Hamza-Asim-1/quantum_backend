@@ -26,11 +26,11 @@ CREATE TABLE IF NOT EXISTS referral_commissions (
 );
 
 -- Indexes
-CREATE INDEX idx_referral_commissions_referrer ON referral_commissions(referrer_id);
-CREATE INDEX idx_referral_commissions_referred ON referral_commissions(referred_user_id);
-CREATE INDEX idx_referral_commissions_investment ON referral_commissions(investment_id);
-CREATE INDEX idx_referral_commissions_status ON referral_commissions(status);
-CREATE INDEX idx_referral_commissions_paid_at ON referral_commissions(paid_at);
+CREATE INDEX IF NOT EXISTS idx_referral_commissions_referrer ON referral_commissions(referrer_id);
+CREATE INDEX IF NOT EXISTS idx_referral_commissions_referred ON referral_commissions(referred_user_id);
+CREATE INDEX IF NOT EXISTS idx_referral_commissions_investment ON referral_commissions(investment_id);
+CREATE INDEX IF NOT EXISTS idx_referral_commissions_status ON referral_commissions(status);
+CREATE INDEX IF NOT EXISTS idx_referral_commissions_paid_at ON referral_commissions(paid_at);
 
 -- Unique constraint: One commission per referred user (only first investment)
 CREATE UNIQUE INDEX idx_referral_commissions_unique 
