@@ -138,6 +138,11 @@ export const corsConfig = {
       return callback(null, true);
     }
     
+    // Allow specific development origins
+    if (origin === 'http://localhost:5173' || origin === 'https://quantumpips.lovable.app') {
+      return callback(null, true);
+    }
+    
     // Allow quantumpips.co domain specifically
     if (origin === 'https://quantumpips.co' || origin === 'https://www.quantumpips.co') {
       return callback(null, true);
