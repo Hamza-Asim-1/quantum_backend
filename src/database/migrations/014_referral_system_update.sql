@@ -1,7 +1,10 @@
--- Migration 014: Referral System Enhancement
--- Purpose: Complete referral system with tracking and rewards
+-- Migration 014: Update Referral System for Deposits
+-- Purpose: Modify existing referral system to work with deposits instead of investments
 
--- Create referral_commissions table for tracking referral rewards
+-- First, drop the existing referral_commissions table and recreate it for deposits
+DROP TABLE IF EXISTS referral_commissions CASCADE;
+
+-- Create new referral_commissions table for deposit-based referrals
 CREATE TABLE IF NOT EXISTS referral_commissions (
     id SERIAL PRIMARY KEY,
     referrer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -30,6 +33,10 @@ CREATE INDEX IF NOT EXISTS idx_referral_commissions_referred ON referral_commiss
 CREATE INDEX IF NOT EXISTS idx_referral_commissions_deposit ON referral_commissions(deposit_id);
 CREATE INDEX IF NOT EXISTS idx_referral_commissions_status ON referral_commissions(status);
 CREATE INDEX IF NOT EXISTS idx_referral_commissions_created_at ON referral_commissions(created_at);
+
+-- Unique constraint: One commission per referred user (only first deposit)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_referral_commissions_unique 
+    ON referral_commissions(referred_user_id);
 
 -- Trigger to update updated_at
 DROP TRIGGER IF EXISTS update_referral_commissions_updated_at ON referral_commissions;
@@ -69,36 +76,36 @@ BEGIN
                 
                 -- Calculate 5% commission
                 commission_amount := NEW.amount * 0.05;
-            
-            -- Get referrer's account
-            SELECT id, available_balance INTO referrer_account_id, referrer_balance_before
-            FROM accounts 
-            WHERE user_id = referrer_user_id;
-            
-            -- Update referrer's balance
-            UPDATE accounts 
-            SET available_balance = available_balance + commission_amount,
-                balance = balance + commission_amount,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = referrer_user_id;
-            
-            -- Get updated balance
-            SELECT available_balance INTO referrer_balance_after
-            FROM accounts 
-            WHERE user_id = referrer_user_id;
-            
-            -- Create ledger entry for referrer
-            INSERT INTO ledger_entries (
-                user_id, transaction_type, amount, balance_before, balance_after,
-                reference_type, reference_id, description, created_at
-            ) VALUES (
-                referrer_user_id, 'referral_commission', commission_amount, 
-                referrer_balance_before, referrer_balance_after,
-                'deposit', NEW.id, 
-                'Referral commission from user deposit: ' || commission_amount || ' USDT',
-                CURRENT_TIMESTAMP
-            ) RETURNING id INTO ledger_entry_id;
-            
+                
+                -- Get referrer's account
+                SELECT id, available_balance INTO referrer_account_id, referrer_balance_before
+                FROM accounts 
+                WHERE user_id = referrer_user_id;
+                
+                -- Update referrer's balance
+                UPDATE accounts 
+                SET available_balance = available_balance + commission_amount,
+                    balance = balance + commission_amount,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = referrer_user_id;
+                
+                -- Get updated balance
+                SELECT available_balance INTO referrer_balance_after
+                FROM accounts 
+                WHERE user_id = referrer_user_id;
+                
+                -- Create ledger entry for referrer
+                INSERT INTO ledger_entries (
+                    user_id, transaction_type, amount, balance_before, balance_after,
+                    reference_type, reference_id, description, created_at
+                ) VALUES (
+                    referrer_user_id, 'referral_commission', commission_amount, 
+                    referrer_balance_before, referrer_balance_after,
+                    'deposit', NEW.id, 
+                    'Referral commission from user deposit: ' || commission_amount || ' USDT',
+                    CURRENT_TIMESTAMP
+                ) RETURNING id INTO ledger_entry_id;
+                
                 -- Create referral commission record
                 INSERT INTO referral_commissions (
                     referrer_id, referred_user_id, deposit_id, commission_amount,
@@ -158,6 +165,6 @@ CREATE TRIGGER update_referral_stats_trigger
     FOR EACH ROW
     EXECUTE FUNCTION update_referral_stats();
 
-COMMENT ON TABLE referral_commissions IS 'Tracks referral commissions paid to users';
+COMMENT ON TABLE referral_commissions IS 'Tracks referral commissions paid to users from deposits';
 COMMENT ON COLUMN referral_commissions.commission_rate IS 'Commission rate as decimal (0.05 = 5%)';
 COMMENT ON COLUMN referral_commissions.status IS 'Commission status: pending, paid, cancelled';
