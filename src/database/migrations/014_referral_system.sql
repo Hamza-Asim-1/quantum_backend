@@ -60,8 +60,15 @@ BEGIN
         -- If user was referred, process commission
         IF referrer_user_id IS NOT NULL THEN
             
-            -- Calculate 5% commission
-            commission_amount := NEW.amount * 0.05;
+            -- Check if commission already exists for this referrer-referred pair
+            IF NOT EXISTS (
+                SELECT 1 FROM referral_commissions 
+                WHERE referrer_id = referrer_user_id 
+                AND referred_user_id = NEW.user_id
+            ) THEN
+                
+                -- Calculate 5% commission
+                commission_amount := NEW.amount * 0.05;
             
             -- Get referrer's account
             SELECT id, available_balance INTO referrer_account_id, referrer_balance_before
@@ -92,16 +99,18 @@ BEGIN
                 CURRENT_TIMESTAMP
             ) RETURNING id INTO ledger_entry_id;
             
-            -- Create referral commission record
-            INSERT INTO referral_commissions (
-                referrer_id, referred_user_id, deposit_id, commission_amount,
-                commission_rate, status, ledger_entry_id, created_at, updated_at
-            ) VALUES (
-                referrer_user_id, NEW.user_id, NEW.id, commission_amount,
-                0.05, 'paid', ledger_entry_id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-            );
+                -- Create referral commission record
+                INSERT INTO referral_commissions (
+                    referrer_id, referred_user_id, deposit_id, commission_amount,
+                    commission_rate, status, ledger_entry_id, created_at, updated_at
+                ) VALUES (
+                    referrer_user_id, NEW.user_id, NEW.id, commission_amount,
+                    0.05, 'paid', ledger_entry_id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                );
+                
+            END IF; -- End of duplicate commission check
             
-        END IF;
+        END IF; -- End of referrer check
     END IF;
     
     RETURN NEW;
