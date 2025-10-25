@@ -210,7 +210,12 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
     let referralStats = {
       totalReferrals: 0,
       totalCommissionsPaid: 0,
-      topReferrers: [],
+      topReferrers: [] as Array<{
+        name: string;
+        email: string;
+        referrals_made: number;
+        total_earned: number;
+      }>,
       recentReferrals: 0
     };
 
