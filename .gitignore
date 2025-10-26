@@ -102,8 +102,7 @@ temp/
 ehthumbs.db
 Thumbs.db
 
-# Database files
-*.sql
+# Database files (migrations are tracked)
 *.sqlite
 *.db
 
