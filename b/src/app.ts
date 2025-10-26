@@ -26,7 +26,9 @@ import transactionHistoryRoutes from './routes/transactionHistoryRoutes';
 import investmentRoutes from './routes/investmentRoutes';
 import accountsRoutes from './routes/accountsRoutes';
 import walletRoutes from './routes/walletRoutes';
+import referralRoutes from './routes/referralRoutes';
 import healthRoutes from './routes/healthRoutes';
+import profitRoutes from './routes/profitRoutes';
 
 // Handle uncaught exceptions and unhandled rejections
 handleUncaughtException();
@@ -95,6 +97,10 @@ app.use('/api/v1/accounts', accountsRoutes);
 logger.info('   ✓ /api/v1/accounts');
 app.use('/api/v1/wallets', walletRoutes);
 logger.info('   ✓ /api/v1/wallets');
+app.use('/api/v1/referrals', referralRoutes);
+logger.info('   ✓ /api/v1/referrals');
+app.use('/api/v1/profits', profitRoutes);
+logger.info('   ✓ /api/v1/profits');
 
 // 404 Handler
 app.use(notFoundHandler);

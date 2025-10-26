@@ -306,8 +306,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
  * User Registration
  */
 export const register = async (req: Request, res: Response): Promise<void> => {
+  const client = await pool.connect();
+  
   try {
-    const { email, password, full_name, phone } = req.body;
+    const { email, password, full_name, phone, referral_code } = req.body;
 
     if (!email || !password || !full_name) {
       res.status(400).json({
@@ -331,23 +333,54 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Start transaction
+    await client.query('BEGIN');
+
+    // Validate referral code if provided
+    let referrerId = null;
+    if (referral_code) {
+      const referrerResult = await client.query(
+        'SELECT id FROM users WHERE referral_code = $1',
+        [referral_code]
+      );
+
+      if (referrerResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        res.status(400).json({
+          status: 'error',
+          message: 'Invalid referral code',
+        });
+        return;
+      }
+
+      referrerId = referrerResult.rows[0].id;
+    }
+
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Generate referral code
-    // Replace the referral code generation with:
-const referralCode = `${Math.random().toString(36).substr(2, 8).toUpperCase()}${Date.now().toString().slice(-4)}`;
-// This gives you: 8 random chars + 4 timestamp digits = 12 characters total
+    // Generate unique referral code
+    const referralCode = `${Math.random().toString(36).substr(2, 8).toUpperCase()}${Date.now().toString().slice(-4)}`;
 
-    // Insert user
-    const result = await pool.query(
-      `INSERT INTO users (email, password_hash, full_name, phone, referral_code)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, email, full_name, kyc_status`,
-      [email, passwordHash, full_name, phone, referralCode]
+    // Insert user with referral relationship
+    const result = await client.query(
+      `INSERT INTO users (email, password_hash, full_name, phone, referral_code, referred_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, email, full_name, kyc_status, referral_code`,
+      [email, passwordHash, full_name, phone, referralCode, referrerId]
     );
 
     const user = result.rows[0];
+
+    // Create account for new user
+    await client.query(
+      `INSERT INTO accounts (user_id, balance, available_balance, invested_balance)
+       VALUES ($1, 0, 0, 0)`,
+      [user.id]
+    );
+
+    // Commit transaction
+    await client.query('COMMIT');
 
     // Generate token
     const accessToken = jwt.sign(
@@ -379,17 +412,21 @@ const referralCode = `${Math.random().toString(36).substr(2, 8).toUpperCase()}${
           full_name: user.full_name,
           role: 'user',
           kyc_status: user.kyc_status,
+          referral_code: user.referral_code,
         },
         accessToken,
         refreshToken,
       },
     });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Registration error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Registration failed',
     });
+  } finally {
+    client.release();
   }
 };
 
@@ -409,7 +446,14 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
     }
 
     const result = await pool.query(
-      'SELECT id, email, full_name, phone, kyc_status, is_admin, created_at FROM users WHERE id = $1',
+      `SELECT 
+        u.id, u.email, u.full_name, u.phone, u.kyc_status, u.is_admin, 
+        u.referral_code, u.total_referrals, u.total_commission_earned,
+        u.created_at,
+        referrer.full_name as referrer_name, referrer.email as referrer_email
+      FROM users u
+      LEFT JOIN users referrer ON u.referred_by = referrer.id
+      WHERE u.id = $1`,
       [userId]
     );
 
@@ -433,6 +477,13 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
           phone: user.phone,
           kyc_status: user.kyc_status,
           is_admin: user.is_admin,
+          referral_code: user.referral_code,
+          total_referrals: user.total_referrals || 0,
+          total_commission_earned: parseFloat(user.total_commission_earned || 0),
+          referrer: user.referrer_name ? {
+            name: user.referrer_name,
+            email: user.referrer_email
+          } : null,
           created_at: user.created_at,
         },
       },

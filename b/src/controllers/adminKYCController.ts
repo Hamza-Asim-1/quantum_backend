@@ -198,12 +198,72 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
           COUNT(*) as count,
           COALESCE(SUM(amount), 0) as total
         FROM deposits
-        WHERE status = 'completed'
+        WHERE status = 'confirmed'
       `);
       depositCount = parseInt(depositsResult.rows[0].count);
       totalDeposits = parseFloat(depositsResult.rows[0].total);
     } catch (error) {
       console.log('Deposits table not found or query failed, using defaults');
+    }
+
+    // Referral statistics
+    let referralStats = {
+      totalReferrals: 0,
+      totalCommissionsPaid: 0,
+      topReferrers: [] as Array<{
+        name: string;
+        email: string;
+        referrals_made: number;
+        total_earned: number;
+      }>,
+      recentReferrals: 0
+    };
+
+    try {
+      // Total referrals made
+      const totalReferralsResult = await pool.query(`
+        SELECT COUNT(*) as count FROM users WHERE referred_by IS NOT NULL
+      `);
+      referralStats.totalReferrals = parseInt(totalReferralsResult.rows[0].count);
+
+      // Total commissions paid
+      const totalCommissionsResult = await pool.query(`
+        SELECT COALESCE(SUM(commission_amount), 0) as total
+        FROM referral_commissions 
+        WHERE status = 'paid'
+      `);
+      referralStats.totalCommissionsPaid = parseFloat(totalCommissionsResult.rows[0].total);
+
+      // Top referrers (last 30 days)
+      const topReferrersResult = await pool.query(`
+        SELECT 
+          u.full_name, u.email,
+          COUNT(rc.id) as referrals_made,
+          COALESCE(SUM(rc.commission_amount), 0) as total_earned
+        FROM users u
+        LEFT JOIN referral_commissions rc ON u.id = rc.referrer_id AND rc.status = 'paid'
+        WHERE u.total_referrals > 0
+        GROUP BY u.id, u.full_name, u.email
+        ORDER BY referrals_made DESC, total_earned DESC
+        LIMIT 5
+      `);
+      referralStats.topReferrers = topReferrersResult.rows.map(user => ({
+        name: user.full_name,
+        email: user.email,
+        referrals_made: parseInt(user.referrals_made),
+        total_earned: parseFloat(user.total_earned)
+      }));
+
+      // Recent referrals (last 7 days)
+      const recentReferralsResult = await pool.query(`
+        SELECT COUNT(*) as count FROM users 
+        WHERE referred_by IS NOT NULL 
+        AND created_at > NOW() - INTERVAL '7 days'
+      `);
+      referralStats.recentReferrals = parseInt(recentReferralsResult.rows[0].count);
+
+    } catch (error) {
+      console.log('Referral statistics query failed, using defaults');
     }
 
     res.status(200).json({
@@ -225,6 +285,12 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
         deposits: {
           total: totalDeposits,
           count: depositCount,
+        },
+        referrals: {
+          totalReferrals: referralStats.totalReferrals,
+          totalCommissionsPaid: referralStats.totalCommissionsPaid,
+          recentReferrals: referralStats.recentReferrals,
+          topReferrers: referralStats.topReferrers,
         },
       },
     });

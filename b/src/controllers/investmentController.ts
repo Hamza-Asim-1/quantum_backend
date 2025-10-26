@@ -10,13 +10,13 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-// Investment levels (no chain dependency)
+// Investment levels - matches UI
 const INVESTMENT_LEVELS = [
   { min: 100, max: 1000, rate: 0.3, level: 1, name: "Starter Plan" },
   { min: 1001, max: 3000, rate: 0.4, level: 2, name: "Growth Plan" },
   { min: 3001, max: 6000, rate: 0.5, level: 3, name: "Professional Plan" },
   { min: 6001, max: 10000, rate: 0.6, level: 4, name: "Premium Plan" },
-  { min: 10001, max: Infinity, rate: 0.7, level: 5, name: "Elite Plan" }
+  { min: 10001, max: 999999999, rate: 0.7, level: 5, name: "Elite Plan" }
 ];
 
 function determineInvestmentLevel(amount: number) {

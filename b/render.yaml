@@ -23,7 +23,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGIN
-        value: https://your-frontend-app.onrender.com
+        value: https://quantumpips.co,https://www.quantumpips.co
     autoDeploy: true
     branch: main
     rootDir: .

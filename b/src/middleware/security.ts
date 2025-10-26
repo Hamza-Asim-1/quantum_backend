@@ -133,6 +133,27 @@ export const corsConfig = {
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     
+    // Allow localhost for development
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    
+    // Allow specific development origins
+    if (origin === 'http://localhost:5173' || origin === 'https://quantumpips.lovable.app') {
+      return callback(null, true);
+    }
+    
+    // Allow quantumpips.co domain specifically
+    if (origin === 'https://quantumpips.co' || origin === 'https://www.quantumpips.co') {
+      return callback(null, true);
+    }
+    
+    // Allow GoDaddy domains (common patterns)
+    if (origin.includes('.com') || origin.includes('.net') || origin.includes('.org')) {
+      return callback(null, true);
+    }
+    
+    // Allow configured origins
     if (config.CORS_ORIGIN.includes(origin)) {
       callback(null, true);
     } else {

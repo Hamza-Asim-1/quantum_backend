@@ -39,15 +39,13 @@ interface ProfitRunResult {
   errors: string[];
 }
 
-// Investment levels configuration
+// Investment levels configuration - matches UI
 const INVESTMENT_LEVELS: InvestmentLevel[] = [
-  { level: 1, name: 'Starter', minAmount: 100, maxAmount: 999, rate: 2.5 },
-  { level: 2, name: 'Bronze', minAmount: 1000, maxAmount: 4999, rate: 3.0 },
-  { level: 3, name: 'Silver', minAmount: 5000, maxAmount: 9999, rate: 3.5 },
-  { level: 4, name: 'Gold', minAmount: 10000, maxAmount: 24999, rate: 4.0 },
-  { level: 5, name: 'Platinum', minAmount: 25000, maxAmount: 49999, rate: 4.5 },
-  { level: 6, name: 'Diamond', minAmount: 50000, maxAmount: 99999, rate: 5.0 },
-  { level: 7, name: 'VIP', minAmount: 100000, maxAmount: 999999, rate: 6.0 },
+  { level: 1, name: 'Starter Plan', minAmount: 100, maxAmount: 1000, rate: 0.3 },
+  { level: 2, name: 'Growth Plan', minAmount: 1001, maxAmount: 3000, rate: 0.4 },
+  { level: 3, name: 'Professional Plan', minAmount: 3001, maxAmount: 6000, rate: 0.5 },
+  { level: 4, name: 'Premium Plan', minAmount: 6001, maxAmount: 10000, rate: 0.6 },
+  { level: 5, name: 'Elite Plan', minAmount: 10001, maxAmount: 999999999, rate: 0.7 },
 ];
 
 class ProfitCalculationService {
