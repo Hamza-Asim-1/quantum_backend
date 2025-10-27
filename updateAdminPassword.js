@@ -1,14 +1,7 @@
 // updateAdminPassword.js
-const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
 require('dotenv').config();
-
-// Simple bcrypt-like hash function using crypto
-function hashPassword(password, saltRounds = 10) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
-  return `$2b$${saltRounds}$${salt}${hash}`;
-}
 
 // Create database connection
 const pool = new Pool({
@@ -31,9 +24,9 @@ async function updateAdminPassword() {
   console.log('');
 
   try {
-    // Hash the password
-    console.log('🔐 Hashing password with crypto (salt rounds: 10)...');
-    const hashedPassword = hashPassword(password, 10);
+    // Hash the password using bcrypt
+    console.log('🔐 Hashing password with bcrypt (salt rounds: 10)...');
+    const hashedPassword = await bcrypt.hash(password, 10);
     console.log('✅ Password hashed successfully');
     console.log(`   Hash: ${hashedPassword.substring(0, 30)}...`);
     console.log('');
