@@ -30,5 +30,14 @@ COMMENT ON COLUMN user_wallets.added_at IS 'When the wallet was linked';
 COMMENT ON COLUMN user_wallets.verified_at IS 'When the wallet was verified';
 
 -- Add check constraint for valid chains
-ALTER TABLE user_wallets ADD CONSTRAINT check_valid_chain 
-CHECK (chain IN ('BEP20', 'TRC20'));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint c
+    JOIN pg_class t ON c.conrelid = t.oid
+    WHERE t.relname = 'user_wallets' AND c.conname = 'check_valid_chain'
+  ) THEN
+    ALTER TABLE user_wallets ADD CONSTRAINT check_valid_chain 
+    CHECK (chain IN ('BEP20', 'TRC20'));
+  END IF;
+END $$;

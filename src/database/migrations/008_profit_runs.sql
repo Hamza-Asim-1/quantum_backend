@@ -39,7 +39,7 @@ CREATE INDEX IF NOT EXISTS idx_profit_runs_idempotency ON profit_runs(idempotenc
 CREATE INDEX IF NOT EXISTS idx_profit_runs_started_at ON profit_runs(started_at DESC);
 
 -- Unique constraint to prevent duplicate runs for same date and type
-CREATE UNIQUE INDEX idx_profit_runs_unique_daily 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profit_runs_unique_daily 
     ON profit_runs(run_type, run_date) 
     WHERE status = 'completed';
 

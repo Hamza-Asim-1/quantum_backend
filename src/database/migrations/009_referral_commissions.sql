@@ -31,7 +31,7 @@ CREATE INDEX IF NOT EXISTS idx_referral_commissions_status ON referral_commissio
 CREATE INDEX IF NOT EXISTS idx_referral_commissions_paid_at ON referral_commissions(paid_at);
 
 -- Unique constraint: One commission per referred user (only first investment)
-CREATE UNIQUE INDEX idx_referral_commissions_unique 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_referral_commissions_unique 
     ON referral_commissions(referred_user_id);
 
 -- Function to check if user has referral commission

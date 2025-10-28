@@ -78,8 +78,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- View for recent admin activity
-CREATE OR REPLACE VIEW recent_admin_activity AS
+-- Recreate view idempotently to avoid column rename conflicts
+DROP VIEW IF EXISTS recent_admin_activity;
+CREATE VIEW recent_admin_activity AS
 SELECT 
     aa.id,
     aa.admin_id,
@@ -96,8 +97,8 @@ JOIN users u ON aa.admin_id = u.id
 ORDER BY aa.performed_at DESC
 LIMIT 100;
 
--- View for admin action statistics
-CREATE OR REPLACE VIEW admin_action_statistics AS
+DROP VIEW IF EXISTS admin_action_statistics;
+CREATE VIEW admin_action_statistics AS
 SELECT 
     u.id,
     u.email,

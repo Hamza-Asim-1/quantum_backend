@@ -7,10 +7,9 @@ CREATE TABLE IF NOT EXISTS investments (
     
     -- Investment details
     amount DECIMAL(18, 2) NOT NULL CHECK (amount > 0),
-    chain VARCHAR(10) NOT NULL CHECK (chain IN ('TRC20', 'BEP20')),
     
     -- Investment level and profit rate
-    level INTEGER NOT NULL CHECK (level BETWEEN 1 AND 6),
+    level INTEGER NOT NULL CHECK (level BETWEEN 1 AND 5),
     profit_rate DECIMAL(5, 2) NOT NULL CHECK (profit_rate > 0),
     frequency VARCHAR(10) NOT NULL CHECK (frequency IN ('daily', 'monthly')),
     
@@ -27,6 +26,11 @@ CREATE TABLE IF NOT EXISTS investments (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP WITH TIME ZONE
 );
+-- Ensure schema compatibility with controller expectations
+ALTER TABLE investments DROP COLUMN IF EXISTS chain;
+-- Normalize level constraint to 1..5 as used by the controller
+ALTER TABLE investments DROP CONSTRAINT IF EXISTS investments_level_check;
+ALTER TABLE investments ADD CONSTRAINT investments_level_check CHECK (level BETWEEN 1 AND 5);
 -- Add invested_balance column to accounts table if it doesn't exist
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS invested_balance DECIMAL(15,2) DEFAULT 0;
 
