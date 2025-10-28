@@ -193,6 +193,7 @@ export const confirmDeposit = async (req: AuthenticatedRequest, res: Response): 
     }
 
     // Update deposit status
+    // Note: The database trigger will automatically update the balance
     await client.query(
       `UPDATE deposits 
        SET status = $1, 
@@ -204,7 +205,7 @@ export const confirmDeposit = async (req: AuthenticatedRequest, res: Response): 
       ['confirmed', admin_notes, adminId, id]
     );
 
-    // Get current balance
+    // Get current balance before trigger runs
     const accountResult = await client.query(
       'SELECT balance, available_balance FROM accounts WHERE user_id = $1',
       [deposit.user_id]
@@ -214,15 +215,15 @@ export const confirmDeposit = async (req: AuthenticatedRequest, res: Response): 
       ? parseFloat(accountResult.rows[0].available_balance)
       : 0;
 
-    // Update account balance
-    await client.query(
-      `UPDATE accounts 
-       SET available_balance = available_balance + $1,
-           balance = balance + $1,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE user_id = $2`,
-      [deposit.amount, deposit.user_id]
+    // Get the updated balance after trigger runs
+    const updatedBalanceResult = await client.query(
+      'SELECT available_balance FROM accounts WHERE user_id = $1',
+      [deposit.user_id]
     );
+    
+    const balanceAfter = updatedBalanceResult.rows[0]
+      ? parseFloat(updatedBalanceResult.rows[0].available_balance)
+      : 0;
 
     // Create ledger entry
     await client.query(
@@ -236,7 +237,7 @@ export const confirmDeposit = async (req: AuthenticatedRequest, res: Response): 
         'deposit',
         deposit.amount,
         balanceBefore,
-        balanceBefore + deposit.amount,
+        balanceAfter,
         deposit.chain,
         'deposit',
         id,

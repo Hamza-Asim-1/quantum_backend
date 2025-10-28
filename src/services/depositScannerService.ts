@@ -104,6 +104,7 @@ async function confirmPendingDeposit(client: any, scannedTx: ScanResult): Promis
       : 0;
 
     // Update deposit to confirmed
+    // Note: The database trigger will automatically update the balance
     await client.query(
       `UPDATE deposits 
        SET status = $1,
@@ -114,19 +115,15 @@ async function confirmPendingDeposit(client: any, scannedTx: ScanResult): Promis
       ['confirmed', scannedTx.to_address, deposit.id]
     );
 
-    // Update user balance
-    // In confirmPendingDeposit function, replace the UPDATE with:
-
-await client.query(
-  `INSERT INTO accounts (user_id, balance, available_balance, invested_balance, updated_at)
-   VALUES ($1, $2, $2, 0, CURRENT_TIMESTAMP)
-   ON CONFLICT (user_id) 
-   DO UPDATE SET 
-     available_balance = accounts.available_balance + EXCLUDED.balance,
-     balance = accounts.balance + EXCLUDED.balance,
-     updated_at = CURRENT_TIMESTAMP`,
-  [deposit.user_id, deposit.amount]
-);
+    // Get the updated balance after trigger runs
+    const updatedBalanceResult = await client.query(
+      'SELECT available_balance FROM accounts WHERE user_id = $1',
+      [deposit.user_id]
+    );
+    
+    const balanceAfter = updatedBalanceResult.rows[0]
+      ? parseFloat(updatedBalanceResult.rows[0].available_balance)
+      : 0;
     // Create ledger entry
     await client.query(
       `INSERT INTO ledger_entries (
@@ -139,7 +136,7 @@ await client.query(
         'deposit',
         deposit.amount,
         balanceBefore,
-        balanceBefore + parseFloat(deposit.amount),
+        balanceAfter,
         deposit.chain,
         'deposit',
         deposit.id,
