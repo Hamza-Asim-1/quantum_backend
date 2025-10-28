@@ -74,5 +74,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Use dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start application
-CMD ["node", "dist/server.js"]
+# Start application with automatic migrations
+CMD ["sh", "-lc", "node dist/database/runMigrations.js && node dist/server.js"]
