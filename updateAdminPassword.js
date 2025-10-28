@@ -17,7 +17,7 @@ async function updateAdminPassword() {
   console.log('🔧 Updating admin password...\n');
   
   const email = process.env.SUPER_ADMIN_EMAIL || 'admin@platform.com';
-  const password = process.env.SUPER_ADMIN_PASSWORD || 'Admin123!';
+  const password = process.env.SUPER_ADMIN_PASSWORD || 'Poster$@123&59';
 
   console.log(`📧 Email: ${email}`);
   console.log(`🔑 Password: ${password}`);
