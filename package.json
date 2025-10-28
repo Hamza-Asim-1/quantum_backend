@@ -20,7 +20,7 @@
     "docker:logs": "docker-compose logs -f",
     "docker:restart": "docker-compose restart",
     "docker:clean": "docker-compose down -v",
-    "update-admin-password": "tsx src/scripts/updateRenderAdminPassword.ts"
+    "update-admin-password": "node src/scripts/updateRenderAdminPassword.js"
   },
   "keywords": [
     "investment",
