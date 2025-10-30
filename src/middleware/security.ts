@@ -133,6 +133,11 @@ export const corsConfig = {
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     
+    // Explicitly allow Capacitor and localhost origins for mobile and local development
+    if (origin === 'capacitor://localhost' || origin === 'http://localhost' || origin === 'https://localhost') {
+      return callback(null, true);
+    }
+    
     // Allow localhost for development
     if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
       return callback(null, true);

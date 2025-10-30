@@ -58,6 +58,20 @@ export const getReferralInfo = async (req: AuthenticatedRequest, res: Response):
       [userId]
     );
 
+    // Aggregate stats (signups, paid referrals, total earned)
+    const statsResult = await pool.query(
+      `SELECT 
+        (SELECT COUNT(*) FROM users WHERE referred_by = $1) AS total_signups,
+        (SELECT COUNT(*) FROM referral_commissions WHERE referrer_id = $1 AND status = 'paid') AS total_paid_referrals,
+        (SELECT COALESCE(SUM(commission_amount), 0) FROM referral_commissions WHERE referrer_id = $1 AND status = 'paid') AS total_earned`,
+      [userId]
+    );
+
+    const stats = statsResult.rows[0];
+    const totalPaidReferrals = parseInt(stats.total_paid_referrals, 10) || 0;
+    const totalEarned = parseFloat(stats.total_earned || 0);
+    const avgPerReferral = totalPaidReferrals > 0 ? totalEarned / totalPaidReferrals : 0;
+
     // Get total commission earned this month
     const monthlyCommissionResult = await pool.query(
       `SELECT COALESCE(SUM(commission_amount), 0) as monthly_commission
@@ -72,8 +86,12 @@ export const getReferralInfo = async (req: AuthenticatedRequest, res: Response):
       status: 'success',
       data: {
         referral_code: user.referral_code,
-        total_referrals: user.total_referrals || 0,
-        total_commission_earned: parseFloat(user.total_commission_earned || 0),
+        // Use paid referrals and computed totals to reflect actual earnings
+        total_referrals: totalPaidReferrals,
+        total_commission_earned: totalEarned,
+        avg_per_referral: avgPerReferral,
+        // Optionally expose signups for UI if needed
+        total_signups: parseInt(stats.total_signups, 10) || 0,
         monthly_commission: parseFloat(monthlyCommissionResult.rows[0].monthly_commission),
         referrals: referralsResult.rows.map(ref => ({
           id: ref.id,

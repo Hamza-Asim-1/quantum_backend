@@ -95,7 +95,7 @@ const config: EnvironmentConfig = {
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   
   // CORS
-  CORS_ORIGIN: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173'],
+  CORS_ORIGIN: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173', 'http://localhost', 'capacitor://localhost'],
   
   // AWS S3
   AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
