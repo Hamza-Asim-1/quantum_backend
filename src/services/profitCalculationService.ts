@@ -247,12 +247,11 @@ class ProfitCalculationService {
    * Distribute profit to a specific user - Add profit to available balance (fixed daily amount)
    */
   private async distributeProfitToUser(client: any, calculation: ProfitCalculation): Promise<void> {
-    // Lock account and read real total balance before
-    const accBefore = await client.query(
-      'SELECT id, balance, available_balance FROM accounts WHERE user_id = $1 FOR UPDATE',
+    // Lock account row to serialize updates (no result needed)
+    await client.query(
+      'SELECT 1 FROM accounts WHERE user_id = $1 FOR UPDATE',
       [calculation.userId]
     );
-    // Lock ensures serialized update; we don't need local variables here
 
     // Add profit to available balance (trigger will recompute total balance)
     await client.query(
