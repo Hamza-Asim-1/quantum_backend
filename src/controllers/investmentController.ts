@@ -81,8 +81,9 @@ export const createInvestment = async (req: AuthenticatedRequest, res: Response)
 
     // FIXED: Remove total_balance reference
     const accountResult = await client.query(
-      `SELECT id, available_balance, balance
-       FROM accounts WHERE user_id = $1`,
+      `SELECT id, available_balance, invested_balance, balance
+       FROM accounts WHERE user_id = $1
+       FOR UPDATE`,
       [userId]
     );
 
@@ -126,41 +127,27 @@ const investmentResult = await client.query(
     const investment = investmentResult.rows[0];
 
     // Update account balance
-    const hasAvailableBalance = await client.query(
-      `SELECT column_name FROM information_schema.columns 
-       WHERE table_name = 'accounts' AND column_name = 'available_balance'`
+    await client.query(
+      `UPDATE accounts 
+       SET available_balance = available_balance - $1,
+           invested_balance = COALESCE(invested_balance, 0) + $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2`,
+      [amount, accountId]
     );
 
-    if (hasAvailableBalance.rows.length > 0) {
-      await client.query(
-        `UPDATE accounts 
-         SET available_balance = available_balance - $1,
-             invested_balance = COALESCE(invested_balance, 0) + $1,
-             balance = (available_balance - $1) + (COALESCE(invested_balance, 0) + $1),
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id = $2`,
-        [amount, accountId]
-      );
-    }
-
-    // Create ledger entry for investment
-await client.query(
-  `INSERT INTO ledger_entries (
-    user_id, transaction_type, amount, balance_before, balance_after, 
-    reference_type, reference_id, description, created_at
-  )
-   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)`,
-  [
-    userId, 
-    'investment', 
-    -amount,
-    parseFloat(accountResult.rows[0].available_balance), // balance_before
-    parseFloat(accountResult.rows[0].available_balance) - amount, // balance_after
-    'investment',
-    investment.id,
-    `Investment created - Level ${levelInfo.level} (${levelInfo.rate}% daily)`
-  ]
-);
+    // Create ledger entry for investment redistribution (amount 0; total balance unchanged)
+    await client.query(
+      `SELECT create_ledger_entry($1, $2, $3, $4, $5, $6)`,
+      [
+        userId,
+        'investment',
+        0, // redistribution only
+        'investment',
+        investment.id,
+        `Investment created - Level ${levelInfo.level} (${levelInfo.rate}% daily)`
+      ]
+    );
 
     await client.query('COMMIT');
 
@@ -200,12 +187,7 @@ export const getUserInvestment = async (req: AuthenticatedRequest, res: Response
         i.status,
         i.created_at,
         i.updated_at,
-        COALESCE(
-          (SELECT SUM(amount) 
-          FROM ledger_entries le 
-          WHERE le.user_id = i.user_id 
-          AND le.transaction_type = 'profit' 
-          AND le.created_at >= i.created_at), 0) as total_profit_earned
+        COALESCE(i.total_profit_earned, 0) as total_profit_earned
       FROM investments i
       WHERE i.user_id = $1 AND i.status = 'active'
       LIMIT 1`,
@@ -293,7 +275,7 @@ export const deleteInvestment = async (req: AuthenticatedRequest, res: Response)
 
     // CHANGE 2: Get account balance BEFORE updating it
     const accountResult = await client.query(
-      'SELECT id, available_balance, invested_balance FROM accounts WHERE user_id = $1',
+      'SELECT id, available_balance, invested_balance, balance FROM accounts WHERE user_id = $1 FOR UPDATE',
       [userId]
     );
 
@@ -308,39 +290,29 @@ export const deleteInvestment = async (req: AuthenticatedRequest, res: Response)
 
     const account = accountResult.rows[0];
     const accountId = account.id;
-    // CHANGE 3: Parse balance as float BEFORE the update
-    const balanceBefore = parseFloat(account.available_balance);
 
     // NOW update the account balances (using investmentAmount which is already a number)
     await client.query(
       `UPDATE accounts 
        SET available_balance = available_balance + $1,
            invested_balance = GREATEST(invested_balance - $1, 0),
-           balance = (available_balance + $1) + GREATEST(invested_balance - $1, 0),
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $2`,
-      [investmentAmount, accountId]  // Using the parsed float value
+      [investmentAmount, accountId]
     );
 
     // CHANGE 4: Calculate balance_after as a number, not string concatenation
-    const balanceAfter = balanceBefore + investmentAmount;
 
-    // Create ledger entry with correct numeric values
+    // Create ledger entry via helper with amount 0 (redistribution)
     await client.query(
-      `INSERT INTO ledger_entries (
-        user_id, transaction_type, amount, balance_before, balance_after,
-        reference_type, reference_id, description, created_at
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)`,
+      `SELECT create_ledger_entry($1, $2, $3, $4, $5, $6)`,
       [
         userId,
         'refund',
-        investmentAmount,  // Using parsed float
-        balanceBefore,     // Already a number
-        balanceAfter,      // Properly calculated as a number
+        0,
         'investment',
         id,
-        `Investment cancelled - Amount refunded: ${investmentAmount} USDT`
+        `Investment cancelled - Amount unlocked: ${investmentAmount} USDT`
       ]
     );
 

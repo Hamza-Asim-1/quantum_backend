@@ -137,34 +137,30 @@ class ProfitCalculationService {
    */
   private async getTotalProfitEarned(investmentId: number): Promise<number> {
     const query = `
-      SELECT COALESCE(SUM(amount), 0) as total_profit
-      FROM ledger_entries
-      WHERE reference_type = 'investment'
-        AND reference_id = $1
-        AND transaction_type = 'profit'
+      SELECT COALESCE(total_profit_earned, 0) AS total_profit
+      FROM investments
+      WHERE id = $1
     `;
 
     const result = await pool.query(query, [investmentId]);
-    return parseFloat(result.rows[0].total_profit);
+    return result.rows.length ? parseFloat(result.rows[0].total_profit) : 0;
   }
 
   /**
    * Get the original investment amount (before any profits were added)
    */
   private async getOriginalInvestmentAmount(investmentId: number): Promise<number> {
-    // Get the original amount from the first ledger entry (investment creation)
     const query = `
-      SELECT ABS(amount) as original_amount
-      FROM ledger_entries
-      WHERE reference_type = 'investment'
-        AND reference_id = $1
-        AND transaction_type = 'investment'
-      ORDER BY created_at ASC
-      LIMIT 1
+      SELECT amount
+      FROM investments
+      WHERE id = $1
     `;
 
     const result = await pool.query(query, [investmentId]);
-    return result.rows.length > 0 ? parseFloat(result.rows[0].original_amount) : 0;
+    if (result.rows.length === 0) {
+      throw new AppError('Investment not found for profit calculation', 404);
+    }
+    return parseFloat(result.rows[0].amount);
   }
 
   /**
@@ -251,41 +247,45 @@ class ProfitCalculationService {
    * Distribute profit to a specific user - Add profit to available balance (fixed daily amount)
    */
   private async distributeProfitToUser(client: any, calculation: ProfitCalculation): Promise<void> {
-    // Add profit to user's available balance (not to investment amount)
+    // Lock account and read real total balance before
+    const accBefore = await client.query(
+      'SELECT id, balance, available_balance FROM accounts WHERE user_id = $1 FOR UPDATE',
+      [calculation.userId]
+    );
+    const accountId = accBefore.rows[0]?.id;
+    const balanceBefore = parseFloat(accBefore.rows[0]?.balance || 0);
+
+    // Add profit to available balance (trigger will recompute total balance)
     await client.query(
       `UPDATE accounts 
-       SET balance = balance + $1,
-           available_balance = available_balance + $1,
+       SET available_balance = available_balance + $1,
            updated_at = CURRENT_TIMESTAMP
        WHERE user_id = $2`,
       [calculation.dailyProfit, calculation.userId]
     );
 
-    // Create ledger entry for profit
+    // Create ledger entry with correct before/after via helper
     await client.query(
-      `INSERT INTO ledger_entries (
-        user_id, transaction_type, amount, balance_before, balance_after,
-        reference_type, reference_id, description, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)`,
+      `SELECT create_ledger_entry($1, $2, $3, $4, $5, $6)`,
       [
         calculation.userId,
         'profit',
         calculation.dailyProfit,
-        calculation.investmentAmount, // balance_before (original investment amount)
-        calculation.investmentAmount + calculation.dailyProfit, // balance_after (for ledger tracking)
         'investment',
         calculation.investmentId,
         `Daily profit - Level ${calculation.profitRate}% - Day ${calculation.daysSinceStart + 1} - Fixed amount: $${calculation.dailyProfit.toFixed(2)}`
       ]
     );
 
-    // Update investment's next profit date
+    // Update investment's next profit date and cumulative profit
     await client.query(
       `UPDATE investments 
        SET next_profit_date = CURRENT_DATE + INTERVAL '1 day',
+           last_profit_date = CURRENT_TIMESTAMP,
+           total_profit_earned = COALESCE(total_profit_earned, 0) + $2,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $1`,
-      [calculation.investmentId]
+      [calculation.investmentId, calculation.dailyProfit]
     );
   }
 
