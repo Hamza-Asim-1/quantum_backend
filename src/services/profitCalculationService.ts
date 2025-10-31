@@ -252,8 +252,7 @@ class ProfitCalculationService {
       'SELECT id, balance, available_balance FROM accounts WHERE user_id = $1 FOR UPDATE',
       [calculation.userId]
     );
-    const accountId = accBefore.rows[0]?.id;
-    const balanceBefore = parseFloat(accBefore.rows[0]?.balance || 0);
+    // Lock ensures serialized update; we don't need local variables here
 
     // Add profit to available balance (trigger will recompute total balance)
     await client.query(
