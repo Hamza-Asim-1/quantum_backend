@@ -86,7 +86,6 @@ BEGIN
     RETURN ROUND((p_amount * p_profit_rate / 100), 2);
 END;
 $$ LANGUAGE plpgsql;
-
 -- Function to get investment level based on amount
 CREATE OR REPLACE FUNCTION get_investment_level(p_amount DECIMAL)
 RETURNS TABLE(level INTEGER, daily_rate DECIMAL, monthly_rate DECIMAL) AS $$
@@ -94,28 +93,25 @@ BEGIN
     RETURN QUERY
     SELECT 
         CASE 
-            WHEN p_amount >= 50000 THEN 6
-            WHEN p_amount >= 10000 THEN 5
-            WHEN p_amount >= 5000 THEN 4
-            WHEN p_amount >= 1000 THEN 3
-            WHEN p_amount >= 500 THEN 2
+            WHEN p_amount >= 10001 THEN 5
+            WHEN p_amount >= 6001 THEN 4
+            WHEN p_amount >= 3001 THEN 3
+            WHEN p_amount >= 1001 THEN 2
             ELSE 1
         END,
         CASE 
-            WHEN p_amount >= 50000 THEN 1.3
-            WHEN p_amount >= 10000 THEN 1.1
-            WHEN p_amount >= 5000 THEN 0.9
-            WHEN p_amount >= 1000 THEN 0.8
-            WHEN p_amount >= 500 THEN 0.7
+            WHEN p_amount >= 10001 THEN 1.0
+            WHEN p_amount >= 6001 THEN 0.9
+            WHEN p_amount >= 3001 THEN 0.8
+            WHEN p_amount >= 1001 THEN 0.7
             ELSE 0.5
         END,
         CASE 
-            WHEN p_amount >= 50000 THEN 45.0
-            WHEN p_amount >= 10000 THEN 38.0
-            WHEN p_amount >= 5000 THEN 30.0
-            WHEN p_amount >= 1000 THEN 27.0
-            WHEN p_amount >= 500 THEN 24.0
-            ELSE 18.0
+            WHEN p_amount >= 10001 THEN 30.0
+            WHEN p_amount >= 6001 THEN 27.0
+            WHEN p_amount >= 3001 THEN 24.0
+            WHEN p_amount >= 1001 THEN 21.0
+            ELSE 15.0
         END;
 END;
 $$ LANGUAGE plpgsql;

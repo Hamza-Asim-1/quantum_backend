@@ -41,11 +41,11 @@ interface ProfitRunResult {
 
 // Investment levels configuration - matches UI
 const INVESTMENT_LEVELS: InvestmentLevel[] = [
-  { level: 1, name: 'Starter Plan', minAmount: 100, maxAmount: 1000, rate: 0.3 },
-  { level: 2, name: 'Growth Plan', minAmount: 1001, maxAmount: 3000, rate: 0.4 },
-  { level: 3, name: 'Professional Plan', minAmount: 3001, maxAmount: 6000, rate: 0.5 },
-  { level: 4, name: 'Premium Plan', minAmount: 6001, maxAmount: 10000, rate: 0.6 },
-  { level: 5, name: 'Elite Plan', minAmount: 10001, maxAmount: 999999999, rate: 0.7 },
+  { level: 1, name: 'Starter Plan', minAmount: 100, maxAmount: 1000, rate: 0.5 },
+  { level: 2, name: 'Growth Plan', minAmount: 1001, maxAmount: 3000, rate: 0.7 },
+  { level: 3, name: 'Professional Plan', minAmount: 3001, maxAmount: 6000, rate: 0.8 },
+  { level: 4, name: 'Premium Plan', minAmount: 6001, maxAmount: 10000, rate: 0.9 },
+  { level: 5, name: 'Elite Plan', minAmount: 10001, maxAmount: 999999999, rate: 1.0 },
 ];
 
 class ProfitCalculationService {
