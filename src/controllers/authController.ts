@@ -3,7 +3,16 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { z } from 'zod';
 import pool from '../config/database';
+import { generateOTP, hashOTP, compareOTP, generateOTPExpiry, isOTPExpired } from '../utils/passwordReset';
+import { sendOTPEmailSES } from '../services/emailService';
+import logger from '../utils/logger';
+
+// Validation schemas
+const emailSchema = z.string().email('Invalid email address');
+const otpSchema = z.string().regex(/^\d{6}$/, 'OTP must be a 6-digit number');
+const passwordSchema = z.string().min(8, 'Password must be at least 8 characters long');
 
 /**
  * User Login
@@ -494,5 +503,327 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
       status: 'error',
       message: 'Failed to fetch profile',
     });
+  }
+};
+
+/**
+ * Forgot Password
+ * Generates a 6-digit OTP, hashes it with bcrypt, stores it in otp table, and sends it via email
+ */
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+  const client = await pool.connect();
+  
+  try {
+    const { email } = req.body;
+
+    // Validate email format
+    if (!email) {
+      res.status(400).json({
+        status: 'error',
+        message: 'Email is required',
+      });
+      return;
+    }
+
+    try {
+      emailSchema.parse(email);
+    } catch (validationError) {
+      res.status(400).json({
+        status: 'error',
+        message: 'Invalid email address format',
+      });
+      return;
+    }
+
+    // Start transaction
+    await client.query('BEGIN');
+
+    // Check if user exists
+    const userResult = await client.query(
+      'SELECT id, email, full_name FROM users WHERE email = $1',
+      [email]
+    );
+
+    // Always return success to prevent email enumeration
+    // But only send email if user exists
+    if (userResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      logger.warn('Password reset requested for non-existent email', { email });
+      res.status(200).json({
+        status: 'success',
+        message: 'If an account with that email exists, an OTP has been sent to your email.',
+      });
+      return;
+    }
+
+    const user = userResult.rows[0];
+
+    // Generate 6-digit OTP
+    const otp = generateOTP();
+    const otpHash = await hashOTP(otp);
+    const otpExpiry = generateOTPExpiry();
+
+    // Delete any existing unverified OTPs for this email
+    await client.query(
+      'DELETE FROM otp WHERE email = $1 AND verified = FALSE',
+      [email]
+    );
+
+    // Store hashed OTP and expiry in otp table
+    await client.query(
+      'INSERT INTO otp (email, otp_hash, expires_at, verified) VALUES ($1, $2, $3, FALSE)',
+      [email, otpHash, otpExpiry]
+    );
+
+    // Commit transaction before sending email
+    await client.query('COMMIT');
+
+    // Send email with OTP
+    const emailSent = await sendOTPEmailSES(user.email, otp);
+
+    if (!emailSent) {
+      // If email fails, delete the OTP we just created
+      await client.query('DELETE FROM otp WHERE email = $1 AND otp_hash = $2', [email, otpHash]);
+      logger.error('Failed to send OTP email', { userId: user.id, email: user.email });
+      res.status(500).json({
+        status: 'error',
+        message: 'Failed to send OTP email. Please try again later.',
+      });
+      return;
+    }
+
+    logger.info('OTP generated and sent', { userId: user.id, email: user.email });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'If an account with that email exists, an OTP has been sent to your email.',
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    logger.error('Forgot password error:', error instanceof Error ? error.message : 'Unknown error');
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to process password reset request',
+    });
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * Verify OTP
+ * Compares incoming OTP with hashed one, checks expiry, and marks verified = true
+ */
+export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      res.status(400).json({
+        status: 'error',
+        message: 'Email and OTP are required',
+      });
+      return;
+    }
+
+    // Validate email format
+    try {
+      emailSchema.parse(email);
+    } catch (validationError) {
+      res.status(400).json({
+        status: 'error',
+        message: 'Invalid email address format',
+      });
+      return;
+    }
+
+    // Validate OTP format (6 digits)
+    try {
+      otpSchema.parse(otp);
+    } catch (validationError) {
+      res.status(400).json({
+        status: 'error',
+        message: 'OTP must be a 6-digit number',
+      });
+      return;
+    }
+
+    // Find the most recent unverified OTP for this email
+    const otpResult = await pool.query(
+      'SELECT id, email, otp_hash, expires_at, verified FROM otp WHERE email = $1 AND verified = FALSE ORDER BY created_at DESC LIMIT 1',
+      [email]
+    );
+
+    if (otpResult.rows.length === 0) {
+      res.status(400).json({
+        status: 'error',
+        message: 'Invalid or expired OTP',
+      });
+      return;
+    }
+
+    const otpRecord = otpResult.rows[0];
+
+    // Check if OTP has expired first (before expensive bcrypt comparison)
+    if (isOTPExpired(otpRecord.expires_at)) {
+      res.status(400).json({
+        status: 'error',
+        message: 'OTP has expired. Please request a new one.',
+      });
+      return;
+    }
+
+    // Compare OTP with hashed OTP
+    const isOTPValid = await compareOTP(otp, otpRecord.otp_hash);
+
+    if (!isOTPValid) {
+      res.status(400).json({
+        status: 'error',
+        message: 'Invalid OTP',
+      });
+      return;
+    }
+
+    // Mark OTP as verified
+    await pool.query(
+      'UPDATE otp SET verified = TRUE WHERE id = $1',
+      [otpRecord.id]
+    );
+
+    logger.info('OTP verified successfully', { email, otpId: otpRecord.id });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'OTP verified successfully. You can now reset your password.',
+    });
+  } catch (error) {
+    logger.error('Verify OTP error:', error instanceof Error ? error.message : 'Unknown error');
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to verify OTP',
+    });
+  }
+};
+
+/**
+ * Reset Password
+ * Ensures OTP is verified, hashes new password, updates users table, and deletes OTP record
+ */
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+  const client = await pool.connect();
+  
+  try {
+    const { email, newPassword } = req.body;
+
+    if (!email || !newPassword) {
+      res.status(400).json({
+        status: 'error',
+        message: 'Email and new password are required',
+      });
+      return;
+    }
+
+    // Validate email format
+    try {
+      emailSchema.parse(email);
+    } catch (validationError) {
+      res.status(400).json({
+        status: 'error',
+        message: 'Invalid email address format',
+      });
+      return;
+    }
+
+    // Validate password strength
+    try {
+      passwordSchema.parse(newPassword);
+    } catch (validationError) {
+      res.status(400).json({
+        status: 'error',
+        message: 'Password must be at least 8 characters long',
+      });
+      return;
+    }
+
+    // Start transaction
+    await client.query('BEGIN');
+
+    // Check if user exists
+    const userResult = await client.query(
+      'SELECT id, email FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (userResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      res.status(404).json({
+        status: 'error',
+        message: 'User not found',
+      });
+      return;
+    }
+
+    const user = userResult.rows[0];
+
+    // Find verified OTP for this email and check it's not expired
+    const otpResult = await client.query(
+      'SELECT id, expires_at FROM otp WHERE email = $1 AND verified = TRUE ORDER BY created_at DESC LIMIT 1',
+      [email]
+    );
+
+    if (otpResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      res.status(400).json({
+        status: 'error',
+        message: 'OTP not verified. Please verify your OTP first.',
+      });
+      return;
+    }
+
+    const otpRecord = otpResult.rows[0];
+
+    // Check if verified OTP is still valid (not expired)
+    if (isOTPExpired(otpRecord.expires_at)) {
+      await client.query('ROLLBACK');
+      res.status(400).json({
+        status: 'error',
+        message: 'OTP has expired. Please request a new one.',
+      });
+      return;
+    }
+
+    // Hash the new password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password in users table
+    await client.query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2',
+      [passwordHash, user.id]
+    );
+
+    // Delete the OTP record
+    await client.query(
+      'DELETE FROM otp WHERE id = $1',
+      [otpRecord.id]
+    );
+
+    // Commit transaction
+    await client.query('COMMIT');
+
+    logger.info('Password reset successful', { userId: user.id, email: user.email });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Password has been reset successfully',
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    logger.error('Reset password error:', error instanceof Error ? error.message : 'Unknown error');
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to reset password',
+    });
+  } finally {
+    client.release();
   }
 };

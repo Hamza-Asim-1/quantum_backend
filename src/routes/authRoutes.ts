@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, getProfile, refreshToken } from '../controllers/authController';
+import { register, login, getProfile, refreshToken, forgotPassword, verifyOtp, resetPassword } from '../controllers/authController';
 import { authMiddleware } from '../middleware/auth';
 import { 
   validateReferralCodeFormat, 
@@ -18,6 +18,9 @@ router.post('/register',
   register
 );
 router.post('/login', login);
+router.post('/forgot-password', forgotPassword);
+router.post('/verify-otp', verifyOtp);
+router.post('/reset-password', resetPassword);
 
 // Protected routes
 router.get('/profile', authMiddleware, getProfile);
