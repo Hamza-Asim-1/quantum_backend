@@ -1,53 +1,38 @@
 import bcrypt from 'bcrypt';
-import { randomInt } from 'crypto';
+import config from '../config/environment';
 
 /**
- * Generate a 6-digit OTP code using cryptographically secure random number generator
- * @returns {string} 6-digit numeric OTP
+ * Generate a 6-digit OTP
  */
-export const generateOTP = (): string => {
-  // Generate a cryptographically secure random 6-digit number (100000 to 999999)
-  const min = 100000;
-  const max = 999999;
-  return randomInt(min, max + 1).toString();
-};
+export function generateOTP(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 /**
- * Hash an OTP using bcrypt
- * @param otp - The 6-digit OTP code
- * @returns {Promise<string>} Bcrypt hashed OTP
+ * Hash OTP using bcrypt (same as passwords)
  */
-export const hashOTP = async (otp: string): Promise<string> => {
-  const saltRounds = 10;
-  return await bcrypt.hash(otp, saltRounds);
-};
+export async function hashOTP(otp: string): Promise<string> {
+  return await bcrypt.hash(otp, config.BCRYPT_ROUNDS);
+}
 
 /**
- * Compare OTP with hashed OTP
- * @param otp - The plain OTP code
- * @param hashedOTP - The hashed OTP from database
- * @returns {Promise<boolean>} True if OTP matches
+ * Compare plain OTP with hashed OTP
  */
-export const compareOTP = async (otp: string, hashedOTP: string): Promise<boolean> => {
-  return await bcrypt.compare(otp, hashedOTP);
-};
+export async function compareOTP(plainOTP: string, hashedOTP: string): Promise<boolean> {
+  return await bcrypt.compare(plainOTP, hashedOTP);
+}
 
 /**
- * Generate OTP expiry time (5 minutes from now)
- * @returns {Date} Expiry timestamp
+ * Generate OTP expiry timestamp (default 5 minutes from now)
  */
-export const generateOTPExpiry = (): Date => {
-  const now = new Date();
-  const expiry = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes
-  return expiry;
-};
+export function generateOTPExpiry(): Date {
+  const expiryMinutes = config.OTP_EXPIRES_IN_MINUTES;
+  return new Date(Date.now() + expiryMinutes * 60 * 1000);
+}
 
 /**
- * Verify if an OTP has expired
- * @param expiry - Expiry timestamp
- * @returns {boolean} True if OTP is expired
+ * Check if OTP has expired
  */
-export const isOTPExpired = (expiry: Date | string): boolean => {
-  const expiryDate = typeof expiry === 'string' ? new Date(expiry) : expiry;
-  return new Date() > expiryDate;
-};
+export function isOTPExpired(expiresAt: Date): boolean {
+  return new Date() > new Date(expiresAt);
+}

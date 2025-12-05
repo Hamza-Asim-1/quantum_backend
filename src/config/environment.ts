@@ -35,6 +35,18 @@ interface EnvironmentConfig {
   AWS_REGION?: string;
   AWS_S3_BUCKET?: string;
   
+  // Email Configuration (NodeMailer with GoDaddy)
+  EMAIL_HOST: string;
+  EMAIL_PORT: number;
+  EMAIL_SECURE: boolean;
+  EMAIL_USER: string;
+  EMAIL_PASSWORD: string;
+  EMAIL_FROM: string;
+  EMAIL_FROM_NAME: string;
+  
+  // OTP Configuration
+  OTP_EXPIRES_IN_MINUTES: number;
+  
   // Blockchain
   BLOCKCHAIN_RPC_URL?: string;
   BLOCKCHAIN_PRIVATE_KEY?: string;
@@ -59,7 +71,11 @@ const requiredEnvVars = [
   'DB_NAME',
   'DB_USER',
   'DB_PASSWORD',
-  'REDIS_HOST'
+  'REDIS_HOST',
+  'EMAIL_HOST',
+  'EMAIL_USER',
+  'EMAIL_PASSWORD',
+  'EMAIL_FROM'
 ];
 
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
@@ -103,6 +119,18 @@ const config: EnvironmentConfig = {
   AWS_REGION: process.env.AWS_REGION,
   AWS_S3_BUCKET: process.env.AWS_S3_BUCKET,
   
+  // Email Configuration (NodeMailer with GoDaddy)
+  EMAIL_HOST: process.env.EMAIL_HOST!,
+  EMAIL_PORT: parseInt(process.env.EMAIL_PORT || '587', 10),
+  EMAIL_SECURE: process.env.EMAIL_SECURE === 'true',
+  EMAIL_USER: process.env.EMAIL_USER!,
+  EMAIL_PASSWORD: process.env.EMAIL_PASSWORD!,
+  EMAIL_FROM: process.env.EMAIL_FROM!,
+  EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME || 'Quantum Pips',
+  
+  // OTP Configuration
+  OTP_EXPIRES_IN_MINUTES: parseInt(process.env.OTP_EXPIRES_IN_MINUTES || '5', 10),
+  
   // Blockchain
   BLOCKCHAIN_RPC_URL: process.env.BLOCKCHAIN_RPC_URL,
   BLOCKCHAIN_PRIVATE_KEY: process.env.BLOCKCHAIN_PRIVATE_KEY,
@@ -134,6 +162,15 @@ if (config.DEPOSIT_SCAN_INTERVAL_MINUTES < 1 || config.DEPOSIT_SCAN_INTERVAL_MIN
 if (config.BCRYPT_ROUNDS < 10 || config.BCRYPT_ROUNDS > 15) {
   console.error('❌ Invalid BCRYPT_ROUNDS. Must be between 10 and 15');
   process.exit(1);
+}
+
+if (config.OTP_EXPIRES_IN_MINUTES < 1 || config.OTP_EXPIRES_IN_MINUTES > 60) {
+  console.error('❌ Invalid OTP_EXPIRES_IN_MINUTES. Must be between 1 and 60');
+  process.exit(1);
+}
+
+if (![465, 587, 25].includes(config.EMAIL_PORT)) {
+  console.warn('⚠️  Unusual EMAIL_PORT. Common ports are 465 (SSL), 587 (TLS), or 25');
 }
 
 export default config;

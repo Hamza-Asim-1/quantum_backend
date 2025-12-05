@@ -6,7 +6,8 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import pool from '../config/database';
 import { generateOTP, hashOTP, compareOTP, generateOTPExpiry, isOTPExpired } from '../utils/passwordReset';
-import { sendOTPEmailSES } from '../services/emailService';
+
+import { sendOTPEmail } from '../services/emailService';
 import logger from '../utils/logger';
 
 // Validation schemas
@@ -579,7 +580,8 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
     await client.query('COMMIT');
 
     // Send email with OTP
-    const emailSent = await sendOTPEmailSES(user.email, otp);
+    const emailSent = await sendOTPEmail(user.email, otp);
+
 
     if (!emailSent) {
       // If email fails, delete the OTP we just created
